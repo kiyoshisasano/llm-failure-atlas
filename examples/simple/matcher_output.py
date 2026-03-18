@@ -1,5 +1,5 @@
 """
-LLM Failure Atlas - Minimal Matcher (v7)
+LLM Failure Atlas - Minimal Matcher
 Pipeline: log → signals → modifiers → confidence → diagnosis
 """
 
