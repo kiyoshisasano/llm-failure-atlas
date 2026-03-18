@@ -18,6 +18,23 @@ The Atlas makes those structures explicit.
 
 ---
 
+## Execution Pipeline
+
+This repository defines failure structures, not execution.
+
+To run diagnosis:
+
+log → matcher → debugger
+
+The matcher component is not included in this repository.
+It converts logs into detected failures.
+
+See:
+- matcher (external or experimental component)
+- agent-failure-debugger (for causal interpretation)
+
+---
+
 ## Core Idea
 
 Failures are nodes.
