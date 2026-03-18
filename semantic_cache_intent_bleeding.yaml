@@ -1,0 +1,69 @@
+failure_id: semantic_cache_intent_bleeding
+
+# Signal names in this pattern are system-wide contracts.
+# Rules:
+#   - A signal name must have exactly one definition across all patterns.
+#   - Do not redefine the same signal name with a different rule.
+#   - If a different threshold is needed, define a new signal name.
+signal_contract:
+  shared_definitions: true
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+
+    # --- new signal ---
+    - signal: cache_query_intent_mismatch
+      from: cache.query_intent_similarity
+      rule: value < 0.75
+      comment: cached query intent differs from current query (primary evidence)
+
+    # --- reused signals (DO NOT CHANGE rules) ---
+    - signal: retrieval_skipped_after_cache_hit
+      from:
+        - retrieval.skipped
+        - cache.hit
+        - cache.similarity
+      rule: retrieval.skipped == true and cache.hit == true and cache.similarity >= 0.85
+      comment: reuse from rag_retrieval_drift
+
+    - signal: retrieved_docs_low_intent_alignment
+      from: response.alignment_score
+      rule: value < 0.5
+      comment: reuse from rag_retrieval_drift
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # cache reuse alone is not failure (may be valid).
+  # intent mismatch alone is not failure (retrieval may have corrected it).
+  # failure requires at least 2 conditions:
+  #   - intent mismatch (primary): 0.4
+  #   - cache reuse:               0.3
+  #   - output misalignment:       0.2
+  # reachable combinations above threshold:
+  #   intent + cache reuse:   0.7 >= 0.6  diagnosed
+  #   intent + symptom:       0.6 >= 0.6  diagnosed
+  #   cache reuse + symptom:  0.5 < 0.6   not diagnosed (intent required)
+
+  evidence_modifiers:
+    - signal: cache_query_intent_mismatch
+      add: 0.4
+    - signal: retrieval_skipped_after_cache_hit
+      add: 0.3
+
+  symptom_modifiers:
+    - signal: retrieved_docs_low_intent_alignment
+      add: 0.2
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0
