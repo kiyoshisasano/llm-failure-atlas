@@ -141,6 +141,86 @@ def load_annotations(annotations_dir: Path) -> dict:
 # Main
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Error classification
+# ---------------------------------------------------------------------------
+
+ERROR_TYPES = {
+    "false_positive":    "Failure detected that should not have been",
+    "false_negative":    "Expected failure not detected",
+    "wrong_root":        "Root cause is incorrect",
+    "weak_explanation":  "Explanation is thin or unclear (single-node path)",
+    "over_detection":    "Too many failures detected for the scenario",
+    "threshold_boundary": "Detection triggered at exact boundary value",
+}
+
+
+def classify_errors(scenario: dict, matcher_output: list,
+                    debugger_output: dict) -> list[dict]:
+    """Classify potential errors for a scenario. Returns list of error entries."""
+    errors = []
+    category = scenario.get("category", "")
+    log = scenario["log"]
+    diagnosed = [r for r in matcher_output if r.get("diagnosed")]
+    diagnosed_ids = [r["failure_id"] for r in diagnosed]
+
+    # False positive: clean/false_positive scenario with detections
+    alignment = log.get("response", {}).get("alignment_score", 0)
+    if category == "clean" and diagnosed:
+        for d in diagnosed:
+            errors.append({
+                "type": "false_positive",
+                "failure": d["failure_id"],
+                "detail": f"Detected in clean scenario (alignment={alignment})",
+            })
+    elif category == "false_positive" and alignment >= 0.7 and len(diagnosed) > 1:
+        for d in diagnosed:
+            errors.append({
+                "type": "false_positive",
+                "failure": d["failure_id"],
+                "detail": f"Detected despite good alignment ({alignment})",
+            })
+
+    # Single false positive in false_positive category (borderline)
+    if category == "false_positive" and alignment >= 0.7 and len(diagnosed) == 1:
+        d = diagnosed[0]
+        errors.append({
+            "type": "threshold_boundary",
+            "failure": d["failure_id"],
+            "detail": f"Single detection with good alignment ({alignment}). "
+                      f"Confidence={d['confidence']}",
+        })
+
+    # Weak explanation: single-node path
+    primary = debugger_output.get("primary_path")
+    if primary is not None and len(primary) < 2 and diagnosed:
+        errors.append({
+            "type": "weak_explanation",
+            "failure": diagnosed[0]["failure_id"],
+            "detail": f"Single-node path, no causal chain. "
+                      f"Path={primary}",
+        })
+
+    # Over-detection: more than 5 failures
+    if len(diagnosed) > 5:
+        errors.append({
+            "type": "over_detection",
+            "detail": f"{len(diagnosed)} failures detected",
+            "failures": diagnosed_ids,
+        })
+
+    # Threshold boundary: any diagnosed failure with confidence exactly at threshold
+    for d in diagnosed:
+        if d["confidence"] == d["threshold"]:
+            errors.append({
+                "type": "threshold_boundary",
+                "failure": d["failure_id"],
+                "detail": f"Confidence ({d['confidence']}) exactly at threshold ({d['threshold']})",
+            })
+
+    return errors
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = {a for a in sys.argv[1:] if a.startswith("--")}
@@ -179,6 +259,8 @@ def main():
             scenario, matcher_output, debugger_output, explainer_output
         )
 
+        classified_errors = classify_errors(scenario, matcher_output, debugger_output)
+
         entry = {
             "scenario_id": sid,
             "category": scenario.get("category", "unknown"),
@@ -189,6 +271,7 @@ def main():
             "conflicts": debugger_output.get("conflicts", []),
             "explanation": debugger_output.get("explanation", ""),
             "weak_signal_checks": checks,
+            "classified_errors": classified_errors,
         }
 
         # Attach human annotation if available
@@ -240,6 +323,31 @@ def main():
         }
 
     summary["per_scenario"] = results
+
+    # --- Error classification aggregation ---
+    all_errors = []
+    for r in results:
+        for err in r.get("classified_errors", []):
+            all_errors.append({
+                "scenario_id": r["scenario_id"],
+                "category": r["category"],
+                **err,
+            })
+
+    error_counts = {}
+    for err in all_errors:
+        t = err["type"]
+        error_counts[t] = error_counts.get(t, 0) + 1
+
+    summary["error_classification"] = {
+        "total_errors": len(all_errors),
+        "by_type": error_counts,
+    }
+
+    # Write errors.json
+    errors_path = VALIDATION_DIR / "errors.json"
+    with open(errors_path, "w") as f:
+        json.dump(all_errors, f, indent=2)
 
     print(json.dumps(summary, indent=2))
 
