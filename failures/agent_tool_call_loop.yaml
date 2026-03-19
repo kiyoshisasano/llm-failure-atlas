@@ -1,0 +1,64 @@
+failure_id: agent_tool_call_loop
+
+# Signal names in this pattern are system-wide contracts.
+# Rules:
+#   - A signal name must have exactly one definition across all patterns.
+#   - Do not redefine the same signal name with a different rule.
+#   - If a different threshold is needed, define a new signal name.
+signal_contract:
+  shared_definitions: true
+
+# Tool call loop telemetry contract
+# Required log fields:
+#   tools.repeat_count    int (>= 0)
+#   state.progress_made   bool
+#   reasoning.replanned   bool
+#
+# Note: tools.repeat_count reflects consecutive repetitions of the same
+# or semantically equivalent tool call within a single reasoning turn.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: repeated_tool_call_without_progress
+      from:
+        - tools.repeat_count
+        - state.progress_made
+      rule: tools.repeat_count >= 3 and state.progress_made == false
+      comment: repeated tool invocation without meaningful progress
+
+    - signal: no_replanning_before_repeat
+      from:
+        - reasoning.replanned
+        - tools.repeat_count
+      rule: tools.repeat_count >= 3 and reasoning.replanned == false
+      comment: repeated tool use without replanning
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # repetition alone may be valid in some workflows.
+  # lack of replanning alone does not imply looping.
+  # the failure requires repeated invocation plus lack of meaningful progress.
+  # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.6 → diagnosed
+  # confidence(repeat only) = 0.4 < 0.6 → not diagnosed
+  # confidence(no_replan only) = 0.3 < 0.6 → not diagnosed
+
+  evidence_modifiers:
+    - signal: repeated_tool_call_without_progress
+      add: 0.4
+
+    - signal: no_replanning_before_repeat
+      add: 0.3
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0
