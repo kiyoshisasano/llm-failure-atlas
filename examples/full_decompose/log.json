@@ -1,0 +1,18 @@
+{
+  "input": { "ambiguity_score": 0.8 },
+  "interaction": {
+    "clarification_triggered": false,
+    "user_correction_detected": true
+  },
+  "reasoning": {
+    "replanned": false,
+    "hypothesis_count": 1,
+    "contradiction_detected": true,
+    "hypothesis_abandoned": false
+  },
+  "output": {
+    "repair_attempted": true,
+    "regenerated": false,
+    "repair_quality": 0.3
+  }
+}

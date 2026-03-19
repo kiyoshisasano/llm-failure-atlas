@@ -1,0 +1,90 @@
+{
+  "root_candidates": [
+    "clarification_failure"
+  ],
+  "root_ranking": [
+    {
+      "id": "clarification_failure",
+      "score": 0.85
+    }
+  ],
+  "failures": [
+    {
+      "id": "clarification_failure",
+      "confidence": 0.7,
+      "signals": {
+        "ambiguity_detected_without_clarification": true,
+        "no_hypothesis_branching": true
+      }
+    },
+    {
+      "id": "assumption_invalidation_failure",
+      "confidence": 0.7,
+      "signals": {
+        "contradiction_detected_but_ignored": true,
+        "no_hypothesis_branching": true
+      },
+      "caused_by": [
+        "clarification_failure"
+      ]
+    },
+    {
+      "id": "premature_model_commitment",
+      "confidence": 0.7,
+      "signals": {
+        "ambiguity_without_clarification": true,
+        "assumption_persistence_after_correction": true
+      },
+      "caused_by": [
+        "assumption_invalidation_failure"
+      ]
+    },
+    {
+      "id": "repair_strategy_failure",
+      "confidence": 0.7,
+      "signals": {
+        "output_patched_without_regeneration": true,
+        "repair_quality_below_threshold": true
+      },
+      "caused_by": [
+        "premature_model_commitment"
+      ]
+    }
+  ],
+  "causal_links": [
+    {
+      "from": "clarification_failure",
+      "to": "assumption_invalidation_failure",
+      "relation": "predisposes",
+      "description": "Lack of clarification under ambiguity leads the system to form an assumption that it subsequently fails to invalidate."
+    },
+    {
+      "from": "assumption_invalidation_failure",
+      "to": "premature_model_commitment",
+      "relation": "predisposes",
+      "description": "Failure to invalidate an incorrect assumption leads to premature commitment to a single interpretation."
+    },
+    {
+      "from": "premature_model_commitment",
+      "to": "repair_strategy_failure",
+      "relation": "induces",
+      "description": "Premature commitment causes the system to patch outputs rather than regenerate from corrected assumptions."
+    }
+  ],
+  "causal_paths": [
+    [
+      "clarification_failure",
+      "assumption_invalidation_failure",
+      "premature_model_commitment",
+      "repair_strategy_failure"
+    ]
+  ],
+  "primary_path": [
+    "clarification_failure",
+    "assumption_invalidation_failure",
+    "premature_model_commitment",
+    "repair_strategy_failure"
+  ],
+  "alternative_paths": [],
+  "explanation": "Causal path detected: clarification_failure predisposed assumption_invalidation_failure, which predisposed premature_model_commitment, which induced repair_strategy_failure"
+}

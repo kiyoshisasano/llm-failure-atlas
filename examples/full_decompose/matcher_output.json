@@ -1,0 +1,90 @@
+[
+  {
+    "failure_id": "clarification_failure",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "ambiguity_detected_without_clarification": true,
+      "no_hypothesis_branching": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "ambiguity_detected_without_clarification",
+        "add": 0.4
+      },
+      {
+        "type": "evidence",
+        "signal": "no_hypothesis_branching",
+        "add": 0.3
+      }
+    ]
+  },
+  {
+    "failure_id": "assumption_invalidation_failure",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "contradiction_detected_but_ignored": true,
+      "no_hypothesis_branching": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "contradiction_detected_but_ignored",
+        "add": 0.4
+      },
+      {
+        "type": "evidence",
+        "signal": "no_hypothesis_branching",
+        "add": 0.3
+      }
+    ]
+  },
+  {
+    "failure_id": "premature_model_commitment",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "ambiguity_without_clarification": true,
+      "assumption_persistence_after_correction": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "ambiguity_without_clarification",
+        "add": 0.3
+      },
+      {
+        "type": "evidence",
+        "signal": "assumption_persistence_after_correction",
+        "add": 0.4
+      }
+    ]
+  },
+  {
+    "failure_id": "repair_strategy_failure",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "output_patched_without_regeneration": true,
+      "repair_quality_below_threshold": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "output_patched_without_regeneration",
+        "add": 0.4
+      },
+      {
+        "type": "evidence",
+        "signal": "repair_quality_below_threshold",
+        "add": 0.3
+      }
+    ]
+  }
+]
