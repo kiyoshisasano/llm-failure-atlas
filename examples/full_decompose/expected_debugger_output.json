@@ -86,5 +86,35 @@
     "repair_strategy_failure"
   ],
   "alternative_paths": [],
-  "explanation": "Causal path detected: clarification_failure predisposed assumption_invalidation_failure, which predisposed premature_model_commitment, which induced repair_strategy_failure"
+  "explanation": "Causal path detected: clarification_failure predisposed assumption_invalidation_failure, which predisposed premature_model_commitment, which induced repair_strategy_failure",
+  "evidence": [
+    {
+      "failure": "clarification_failure",
+      "signals": [
+        "ambiguity_detected_without_clarification",
+        "no_hypothesis_branching"
+      ]
+    },
+    {
+      "failure": "assumption_invalidation_failure",
+      "signals": [
+        "contradiction_detected_but_ignored",
+        "no_hypothesis_branching"
+      ]
+    },
+    {
+      "failure": "premature_model_commitment",
+      "signals": [
+        "ambiguity_without_clarification",
+        "assumption_persistence_after_correction"
+      ]
+    },
+    {
+      "failure": "repair_strategy_failure",
+      "signals": [
+        "output_patched_without_regeneration",
+        "repair_quality_below_threshold"
+      ]
+    }
+  ]
 }
