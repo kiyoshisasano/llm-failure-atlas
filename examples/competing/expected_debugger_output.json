@@ -30,17 +30,6 @@
       ]
     },
     {
-      "id": "prompt_injection_via_retrieval",
-      "confidence": 0.7,
-      "signals": {
-        "retrieved_context_instruction_override": true,
-        "retrieved_context_adversarial_pattern": true
-      },
-      "caused_by": [
-        "premature_model_commitment"
-      ]
-    },
-    {
       "id": "rag_retrieval_drift",
       "confidence": 0.6,
       "signals": {
@@ -48,8 +37,18 @@
         "retrieval_skipped_after_cache_hit": true
       },
       "caused_by": [
-        "semantic_cache_intent_bleeding",
-        "prompt_injection_via_retrieval"
+        "semantic_cache_intent_bleeding"
+      ]
+    },
+    {
+      "id": "incorrect_output",
+      "confidence": 0.7,
+      "signals": {
+        "output_misaligned_with_intent": true,
+        "user_correction_required": true
+      },
+      "caused_by": [
+        "rag_retrieval_drift"
       ]
     }
   ],
@@ -67,41 +66,57 @@
       "description": "Cache reuse with intent mismatch leads to degraded retrieval behavior."
     },
     {
-      "from": "premature_model_commitment",
-      "to": "prompt_injection_via_retrieval",
-      "relation": "predisposes",
-      "description": "Early commitment without critical evaluation increases susceptibility to adversarial or misleading retrieved content."
-    },
-    {
-      "from": "prompt_injection_via_retrieval",
-      "to": "rag_retrieval_drift",
-      "relation": "induces",
-      "description": "Adversarial or instruction-altering retrieved content distorts retrieval relevance and leads to degraded retrieval behavior."
+      "from": "rag_retrieval_drift",
+      "to": "incorrect_output",
+      "relation": "propagates_to",
+      "description": "Retrieval drift leads to incorrect or misaligned output."
     }
   ],
   "causal_paths": [
     [
       "premature_model_commitment",
       "semantic_cache_intent_bleeding",
-      "rag_retrieval_drift"
-    ],
-    [
-      "premature_model_commitment",
-      "prompt_injection_via_retrieval",
-      "rag_retrieval_drift"
+      "rag_retrieval_drift",
+      "incorrect_output"
     ]
   ],
   "primary_path": [
     "premature_model_commitment",
     "semantic_cache_intent_bleeding",
-    "rag_retrieval_drift"
+    "rag_retrieval_drift",
+    "incorrect_output"
   ],
-  "alternative_paths": [
-    [
-      "premature_model_commitment",
-      "prompt_injection_via_retrieval",
-      "rag_retrieval_drift"
-    ]
-  ],
-  "explanation": "Primary causal path: premature_model_commitment predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift\nAlternative contributing path: premature_model_commitment predisposed prompt_injection_via_retrieval, which induced rag_retrieval_drift"
+  "alternative_paths": [],
+  "explanation": "Causal path detected: premature_model_commitment predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift, which propagated to incorrect_output",
+  "evidence": [
+    {
+      "failure": "premature_model_commitment",
+      "signals": [
+        "ambiguity_without_clarification",
+        "assumption_persistence_after_correction"
+      ]
+    },
+    {
+      "failure": "semantic_cache_intent_bleeding",
+      "signals": [
+        "cache_query_intent_mismatch",
+        "retrieval_skipped_after_cache_hit",
+        "retrieved_docs_low_intent_alignment"
+      ]
+    },
+    {
+      "failure": "rag_retrieval_drift",
+      "signals": [
+        "retrieved_docs_low_intent_alignment",
+        "retrieval_skipped_after_cache_hit"
+      ]
+    },
+    {
+      "failure": "incorrect_output",
+      "signals": [
+        "output_misaligned_with_intent",
+        "user_correction_required"
+      ]
+    }
+  ]
 }
