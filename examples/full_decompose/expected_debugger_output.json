@@ -86,6 +86,7 @@
     "repair_strategy_failure"
   ],
   "alternative_paths": [],
+  "conflicts": [],
   "explanation": "Causal path detected: clarification_failure predisposed assumption_invalidation_failure, which predisposed premature_model_commitment, which induced repair_strategy_failure",
   "evidence": [
     {
