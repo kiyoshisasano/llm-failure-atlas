@@ -77,82 +77,86 @@ The Atlas provides the **structure** used in the final step.
 .
 ├── failure_graph.yaml              # canonical causal graph
 ├── failures/
-│   ├── rag_retrieval_drift.yaml               # pattern: signals + diagnosis
-│   ├── semantic_cache_intent_bleeding.yaml    # pattern: signals + diagnosis
-│   ├── premature_model_commitment.yaml        # pattern: signals + diagnosis
-│   └── agent_tool_call_loop.yaml              # pattern: signals + diagnosis
+│   ├── rag_retrieval_drift.yaml
+│   ├── semantic_cache_intent_bleeding.yaml
+│   ├── premature_model_commitment.yaml
+│   ├── agent_tool_call_loop.yaml
+│   └── prompt_injection_via_retrieval.yaml
 ├── examples/
-│   ├── simple/
-│   │   ├── log.json                           # input telemetry
-│   │   ├── matcher_output.json                # matcher result
-│   │   └── expected_debugger_output.json      # expected final output
-│   └── branching/
-│       ├── log.json                           # branching telemetry
-│       ├── matcher_output.json                # matcher result (4 failures)
-│       └── expected_debugger_output.json      # expected branching explanation
-└── matcher.py                                 # reference matcher (local use)
+│   ├── simple/        # linear chain
+│   ├── branching/     # diverging paths
+│   └── competing/     # competing upstream causes (merge)
+└── matcher.py
 ```
 
 ---
 
 ## Causal Graph
 
-The current Atlas models both a linear chain and a branching structure.
+The Atlas now models **three structural patterns**:
 
-### Main chain
-
-```text
-premature_model_commitment      (reasoning layer)
-        ↓ predisposes
-semantic_cache_intent_bleeding  (system layer)
-        ↓ induces
-rag_retrieval_drift             (retrieval layer)
-        ↓ propagates_to
-incorrect_output                (output layer / planned)
-```
-
-### Branch
+### 1. Linear chain
 
 ```text
 premature_model_commitment
-        ↓ predisposes
-agent_tool_call_loop            (system layer)
+        ↓
+semantic_cache_intent_bleeding
+        ↓
+rag_retrieval_drift
+        ↓
+incorrect_output
 ```
 
-### Combined view
+---
+
+### 2. Branching (diverging causes)
 
 ```text
 premature_model_commitment
-       /                  \
-      /                    \
-semantic_cache_intent_bleeding   agent_tool_call_loop
-              ↓
-       rag_retrieval_drift
-              ↓
-         incorrect_output
+       ├─→ semantic_cache_intent_bleeding
+       │        ↓
+       │   rag_retrieval_drift
+       └─→ agent_tool_call_loop
 ```
 
-**Example interpretation:**
+---
 
-* The model commits early to a single interpretation under ambiguity
-* That committed interpretation may lead to:
+### 3. Competing upstreams (merging causes)
 
-  * cache reuse under the wrong intent (`semantic_cache_intent_bleeding`)
-  * repeated tool use without meaningful progress (`agent_tool_call_loop`)
-* In the cache path, retrieval is skipped and retrieval quality degrades
-* Output quality may then drop downstream
+```text
+premature_model_commitment
+       ├─→ semantic_cache_intent_bleeding ─→
+       │                                  │
+       └─→ prompt_injection_via_retrieval ─┘
+                       ↓
+              rag_retrieval_drift
+```
+
+---
+
+## Why This Matters
+
+Failures are not independent.
+
+The same downstream failure (e.g. `rag_retrieval_drift`) can be caused by:
+
+* cache misuse (`semantic_cache_intent_bleeding`)
+* adversarial retrieval (`prompt_injection_via_retrieval`)
+
+The Atlas makes these **competing causal paths explicit**.
 
 ---
 
 ## Failure Definitions
 
-| Failure                          | Layer     | Status  | Description                                          |
-| -------------------------------- | --------- | ------- | ---------------------------------------------------- |
-| `premature_model_commitment`     | reasoning | defined | Early hypothesis fixation without clarification      |
-| `semantic_cache_intent_bleeding` | system    | defined | Cache reuse with intent mismatch                     |
-| `rag_retrieval_drift`            | retrieval | defined | Degraded retrieval due to upstream failure           |
-| `agent_tool_call_loop`           | system    | defined | Repeated tool invocation without meaningful progress |
-| `incorrect_output`               | output    | planned | Observable output misalignment                       |
+| Failure                          | Layer     | Status  | Description                                           |
+| -------------------------------- | --------- | ------- | ----------------------------------------------------- |
+| `premature_model_commitment`     | reasoning | defined | Early hypothesis fixation without clarification       |
+| `semantic_cache_intent_bleeding` | system    | defined | Cache reuse with intent mismatch                      |
+| `prompt_injection_via_retrieval` | retrieval | defined | Adversarial or instruction-altering retrieved context |
+| `rag_retrieval_drift`            | retrieval | defined | Degraded retrieval due to upstream failure            |
+| `agent_tool_call_loop`           | system    | defined | Repeated tool invocation without meaningful progress  |
+| `incorrect_output`               | output    | planned | Observable output misalignment                        |
 
 ---
 
@@ -185,43 +189,43 @@ Signal names are system-wide contracts.
 
 ## Reproducible Examples
 
-### Simple chain
+### Simple (linear)
 
-The `examples/simple/` directory contains a reproducible 3-failure chain:
-
-```bash
-# 1. Run matcher against log
-python matcher.py failures/premature_model_commitment.yaml examples/simple/log.json
-# ...repeat for each pattern...
-
-# 2. Run debugger against matcher output
-python ../agent-failure-debugger/main.py examples/simple/matcher_output.json failure_graph.yaml
+```
+examples/simple/
 ```
 
-Expected output matches `examples/simple/expected_debugger_output.json` exactly.
+3-failure chain.
 
-### Branching graph
+---
 
-The `examples/branching/` directory contains a reproducible branching case:
+### Branching
 
-```bash
-# 1. Run matcher against log
-python matcher.py failures/premature_model_commitment.yaml examples/branching/log.json
-# ...repeat for each pattern...
-
-# 2. Run debugger against matcher output
-python ../agent-failure-debugger/main.py examples/branching/matcher_output.json failure_graph.yaml
+```
+examples/branching/
 ```
 
-Expected output matches `examples/branching/expected_debugger_output.json` exactly.
+Diverging paths from a common upstream failure.
+
+---
+
+### Competing (key example)
+
+```
+examples/competing/
+```
+
+Multiple upstream failures explain the same downstream failure.
+
+This is the **core use case** for causal debugging.
 
 ---
 
 ## Principles
 
-* **Graph-first** — no isolated failures; every failure has a structural position
-* **Signal uniqueness** — no duplicated signal definitions across patterns
-* **Separation of concerns** — Atlas defines structure; matcher handles diagnosis; debugger handles interpretation
+* **Graph-first** — failures are defined by their position in a structure
+* **Signal uniqueness** — no duplicated signal definitions
+* **Separation of concerns** — Atlas (structure), matcher (diagnosis), debugger (interpretation)
 
 ---
 
@@ -229,30 +233,29 @@ Expected output matches `examples/branching/expected_debugger_output.json` exact
 
 This is a concrete application of [Phase Loop Dynamics (PLD)](https://github.com/kiyoshisasano/agent-pld-metrics):
 
-| PLD Phase   | Atlas Equivalent                                                                                      |
-| ----------- | ----------------------------------------------------------------------------------------------------- |
-| Drift       | initiating or upstream failure (e.g., `premature_model_commitment`, `semantic_cache_intent_bleeding`) |
-| Propagation | downstream failure (e.g., `rag_retrieval_drift`, `agent_tool_call_loop`)                              |
-| Outcome     | system-level effect (`incorrect_output`)                                                              |
+| PLD Phase   | Atlas Equivalent              |
+| ----------- | ----------------------------- |
+| Drift       | initiating / upstream failure |
+| Propagation | downstream failure            |
+| Outcome     | system-level effect           |
 
 ---
 
 ## Status
 
-| Capability                     | Status                     |
-| ------------------------------ | -------------------------- |
-| Multi-failure modeling         | ✅ supported                |
-| Linear causal chain            | ✅ defined                  |
-| Branching causal graph         | ✅ defined                  |
-| Machine-readable patterns      | ✅ supported                |
-| Root ranking                   | ✅ supported (via debugger) |
-| Reasoning-layer failures (PMC) | ✅ defined and diagnosable  |
+| Capability                | Status                     |
+| ------------------------- | -------------------------- |
+| Multi-failure modeling    | ✅ supported                |
+| Linear causal chain       | ✅ defined                  |
+| Branching graph           | ✅ defined                  |
+| Competing causal paths    | ✅ defined                  |
+| Machine-readable patterns | ✅ supported                |
+| Root ranking              | ✅ supported (via debugger) |
 
 ---
 
 ## Future
 
-* Expand graph coverage (additional failure types)
-* Introduce competing root causes across branches
-* Deepen reasoning-layer failure modeling
-* Extend outcome-layer diagnosability
+* Path scoring for competing causes
+* Stronger explanation generation (signal-aware)
+* Additional failure types across layers
