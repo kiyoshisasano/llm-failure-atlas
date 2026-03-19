@@ -1,0 +1,17 @@
+{
+  "input": { "ambiguity_score": 0.8 },
+  "interaction": {
+    "clarification_triggered": false,
+    "user_correction_detected": true
+  },
+  "reasoning": { "replanned": false },
+  "cache": {
+    "hit": true,
+    "similarity": 0.89,
+    "query_intent_similarity": 0.61
+  },
+  "retrieval": { "skipped": true },
+  "response": { "alignment_score": 0.3 },
+  "tools": { "repeat_count": 4 },
+  "state": { "progress_made": false }
+}
