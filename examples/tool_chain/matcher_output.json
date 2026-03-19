@@ -1,71 +1,68 @@
-{
-  "root_candidates": [
-    "premature_model_commitment"
-  ],
-  "root_ranking": [
-    {
-      "id": "premature_model_commitment",
-      "score": 0.85
-    }
-  ],
-  "failures": [
-    {
-      "id": "premature_model_commitment",
-      "confidence": 0.7,
-      "signals": {
-        "ambiguity_without_clarification": true,
-        "assumption_persistence_after_correction": true
+[
+  {
+    "failure_id": "premature_model_commitment",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "ambiguity_without_clarification": true,
+      "assumption_persistence_after_correction": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "ambiguity_without_clarification",
+        "add": 0.3
+      },
+      {
+        "type": "evidence",
+        "signal": "assumption_persistence_after_correction",
+        "add": 0.4
       }
-    },
-    {
-      "id": "agent_tool_call_loop",
-      "confidence": 0.7,
-      "signals": {
-        "repeated_tool_call_without_progress": true,
-        "no_replanning_before_repeat": true
-      },
-      "caused_by": [
-        "premature_model_commitment"
-      ]
-    },
-    {
-      "id": "tool_result_misinterpretation",
-      "confidence": 0.7,
-      "signals": {
-        "tool_output_misaligned_with_state": true,
-        "decision_inconsistent_with_tool_output": true
-      },
-      "caused_by": [
-        "agent_tool_call_loop"
-      ]
-    }
-  ],
-  "causal_links": [
-    {
-      "from": "premature_model_commitment",
-      "to": "agent_tool_call_loop",
-      "relation": "predisposes",
-      "description": "Early commitment without replanning can cause repeated tool use under an invalid or unchanged assumption."
-    },
-    {
-      "from": "agent_tool_call_loop",
-      "to": "tool_result_misinterpretation",
-      "relation": "induces",
-      "description": "Repeated tool invocation without progress leads to misinterpretation of tool outputs."
-    }
-  ],
-  "causal_paths": [
-    [
-      "premature_model_commitment",
-      "agent_tool_call_loop",
-      "tool_result_misinterpretation"
     ]
-  ],
-  "primary_path": [
-    "premature_model_commitment",
-    "agent_tool_call_loop",
-    "tool_result_misinterpretation"
-  ],
-  "alternative_paths": [],
-  "explanation": "Causal path detected: premature_model_commitment predisposed agent_tool_call_loop, which induced tool_result_misinterpretation"
-}
+  },
+  {
+    "failure_id": "agent_tool_call_loop",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "repeated_tool_call_without_progress": true,
+      "no_replanning_before_repeat": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "repeated_tool_call_without_progress",
+        "add": 0.4
+      },
+      {
+        "type": "evidence",
+        "signal": "no_replanning_before_repeat",
+        "add": 0.3
+      }
+    ]
+  },
+  {
+    "failure_id": "tool_result_misinterpretation",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "tool_output_misaligned_with_state": true,
+      "decision_inconsistent_with_tool_output": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "tool_output_misaligned_with_state",
+        "add": 0.4
+      },
+      {
+        "type": "evidence",
+        "signal": "decision_inconsistent_with_tool_output",
+        "add": 0.3
+      }
+    ]
+  }
+]
