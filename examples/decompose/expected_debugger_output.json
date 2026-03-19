@@ -1,0 +1,91 @@
+{
+  "root_candidates": [
+    "clarification_failure"
+  ],
+  "root_ranking": [
+    {
+      "id": "clarification_failure",
+      "score": 0.85
+    }
+  ],
+  "failures": [
+    {
+      "id": "clarification_failure",
+      "confidence": 0.7,
+      "signals": {
+        "ambiguity_detected_without_clarification": true,
+        "no_hypothesis_branching": true
+      }
+    },
+    {
+      "id": "premature_model_commitment",
+      "confidence": 0.7,
+      "signals": {
+        "ambiguity_without_clarification": true,
+        "assumption_persistence_after_correction": true
+      },
+      "caused_by": [
+        "clarification_failure"
+      ]
+    },
+    {
+      "id": "semantic_cache_intent_bleeding",
+      "confidence": 0.9,
+      "signals": {
+        "cache_query_intent_mismatch": true,
+        "retrieval_skipped_after_cache_hit": true,
+        "retrieved_docs_low_intent_alignment": true
+      },
+      "caused_by": [
+        "premature_model_commitment"
+      ]
+    },
+    {
+      "id": "rag_retrieval_drift",
+      "confidence": 0.6,
+      "signals": {
+        "retrieved_docs_low_intent_alignment": true,
+        "retrieval_skipped_after_cache_hit": true
+      },
+      "caused_by": [
+        "semantic_cache_intent_bleeding"
+      ]
+    }
+  ],
+  "causal_links": [
+    {
+      "from": "clarification_failure",
+      "to": "premature_model_commitment",
+      "relation": "predisposes",
+      "description": "Lack of clarification under ambiguity leads to early commitment to a single interpretation."
+    },
+    {
+      "from": "premature_model_commitment",
+      "to": "semantic_cache_intent_bleeding",
+      "relation": "predisposes",
+      "description": "Early hypothesis fixation increases the probability of cache misuse: a committed interpretation accepts high-similarity cache hits that conflict with the actual user intent."
+    },
+    {
+      "from": "semantic_cache_intent_bleeding",
+      "to": "rag_retrieval_drift",
+      "relation": "induces",
+      "description": "Cache reuse with intent mismatch leads to degraded retrieval behavior."
+    }
+  ],
+  "causal_paths": [
+    [
+      "clarification_failure",
+      "premature_model_commitment",
+      "semantic_cache_intent_bleeding",
+      "rag_retrieval_drift"
+    ]
+  ],
+  "primary_path": [
+    "clarification_failure",
+    "premature_model_commitment",
+    "semantic_cache_intent_bleeding",
+    "rag_retrieval_drift"
+  ],
+  "alternative_paths": [],
+  "explanation": "Causal path detected: clarification_failure predisposed premature_model_commitment, which predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift"
+}
