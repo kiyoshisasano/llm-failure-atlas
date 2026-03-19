@@ -67,5 +67,28 @@
     "rag_retrieval_drift"
   ],
   "alternative_paths": [],
-  "explanation": "Causal path detected: instruction_priority_inversion predisposed prompt_injection_via_retrieval, which induced rag_retrieval_drift"
+  "explanation": "Causal path detected: instruction_priority_inversion predisposed prompt_injection_via_retrieval, which induced rag_retrieval_drift",
+  "evidence": [
+    {
+      "failure": "instruction_priority_inversion",
+      "signals": [
+        "system_instruction_overridden",
+        "external_instruction_dominant"
+      ]
+    },
+    {
+      "failure": "prompt_injection_via_retrieval",
+      "signals": [
+        "retrieved_context_instruction_override",
+        "retrieved_context_adversarial_pattern"
+      ]
+    },
+    {
+      "failure": "rag_retrieval_drift",
+      "signals": [
+        "retrieved_docs_low_intent_alignment",
+        "retrieval_skipped_after_cache_hit"
+      ]
+    }
+  ]
 }
