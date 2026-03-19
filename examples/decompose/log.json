@@ -6,7 +6,9 @@
   },
   "reasoning": {
     "replanned": false,
-    "hypothesis_count": 1
+    "hypothesis_count": 1,
+    "contradiction_detected": true,
+    "hypothesis_abandoned": false
   },
   "cache": {
     "hit": true,
