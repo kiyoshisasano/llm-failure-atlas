@@ -1,0 +1,1 @@
+{"scenario_id":"false_positive_02","annotator":"system_analysis","root_score":1,"path_score":1,"explanation_score":1,"comment":"SCIB detected despite alignment=0.9. intent_similarity=0.7 < 0.75 triggers it. Technically correct per rules but practically a borderline false positive."}

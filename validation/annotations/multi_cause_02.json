@@ -1,0 +1,1 @@
+{"scenario_id":"multi_cause_02","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"CTL + IPI→PI→RRD detected. Two independent root systems. Conflict between PI and CTL correctly handled. Complex multi-root scenario works."}

@@ -1,0 +1,1 @@
+{"scenario_id":"tool_failure_03","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"tool_loop + misinterpretation detected without PMC. PMC not triggered (ambiguity=0.3 < 0.7). Independent tool chain works correctly."}

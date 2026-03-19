@@ -1,0 +1,1 @@
+{"scenario_id":"deep_reasoning_02","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":1,"comment":"Full 6-failure chain CF→AIF→PMC→SCIB→RRD→IO. Over_detection flag but all are legitimate. Explanation is long."}

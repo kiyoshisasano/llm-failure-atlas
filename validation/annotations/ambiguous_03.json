@@ -1,0 +1,1 @@
+{"scenario_id":"ambiguous_03","annotator":"system_analysis","root_score":2,"path_score":1,"explanation_score":1,"comment":"PMC fires correctly. SCIB: intent=0.6 < 0.75 ✓ but cache.similarity=0.84 < 0.85, so retrieval_skipped fails. SCIB at exact threshold 0.6. IO also fires. Threshold boundary issue."}

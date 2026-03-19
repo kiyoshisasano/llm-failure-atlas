@@ -1,0 +1,1 @@
+{"scenario_id":"over_detection_02","annotator":"system_analysis","root_score":2,"path_score":1,"explanation_score":1,"comment":"4 failures. AIF NOT detected (hypothesis_abandoned=true). CF NOT detected (hypothesis_count=2). Correct exclusions. PMC fires. SCIB borderline."}

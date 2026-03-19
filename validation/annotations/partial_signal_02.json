@@ -1,0 +1,1 @@
+{"scenario_id":"partial_signal_02","annotator":"system_analysis","root_score":2,"path_score":1,"explanation_score":1,"comment":"PMC detected correctly. SCIB not detected (intent_similarity=0.8 is fine). But RRD also detected as independent since retrieval.skipped=true — this creates an odd multi-root PMC+RRD. Partial correctness."}

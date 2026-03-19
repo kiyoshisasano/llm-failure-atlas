@@ -1,0 +1,1 @@
+{"scenario_id":"missing_fields_03","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"Only tools/state/reasoning/response. tool_loop detected correctly. No other failures (correct: no cache/retrieval data)."}

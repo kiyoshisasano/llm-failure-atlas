@@ -1,0 +1,1 @@
+{"scenario_id":"regression_02","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"Matches examples/competing baseline. PMC→SCIB→RRD with PI alternative + conflict. Regression check passed."}

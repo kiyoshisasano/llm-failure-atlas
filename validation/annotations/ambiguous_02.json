@@ -1,0 +1,1 @@
+{"scenario_id":"ambiguous_02","annotator":"system_analysis","root_score":1,"path_score":1,"explanation_score":1,"comment":"PMC should NOT fire (0.69 < 0.7) — correct. But SCIB fires (intent=0.74 < 0.75). RRD and IO also fire. 3 failures with SCIB as root. Acceptable but borderline."}

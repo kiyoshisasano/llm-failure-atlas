@@ -1,0 +1,1 @@
+{"scenario_id":"missing_fields_02","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"Only cache/retrieval/response fields. SCIB + RRD correctly detected from available data. Graceful partial detection."}

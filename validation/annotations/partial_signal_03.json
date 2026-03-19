@@ -1,0 +1,1 @@
+{"scenario_id":"partial_signal_03","annotator":"system_analysis","root_score":1,"path_score":1,"explanation_score":1,"comment":"PMC correct. SCIB fires (intent=0.55) but retrieval_skipped_after_cache_hit fails (skipped=false). So SCIB has only 1 signal (0.4 conf < 0.6). RRD same issue. PMC + IO detected. Boundary at threshold."}

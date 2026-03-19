@@ -1,0 +1,1 @@
+{"scenario_id":"adversarial_02","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"IPI + PI + IO detected. adversarial_score=0.7 uses >= check — this is a boundary in the rule (>= 0.7). PI correctly diagnosed. Independent adversarial detection works."}

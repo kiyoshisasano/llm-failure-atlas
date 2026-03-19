@@ -1,0 +1,1 @@
+{"scenario_id":"adversarial_03","annotator":"system_analysis","root_score":2,"path_score":1,"explanation_score":1,"comment":"6 failures detected (over_detection). PMC + IPI both root. Full graph active. Correct but explanation is complex."}

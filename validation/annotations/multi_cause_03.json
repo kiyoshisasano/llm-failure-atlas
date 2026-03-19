@@ -1,0 +1,1 @@
+{"scenario_id":"multi_cause_03","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"PMC→SCIB→RRD + PMC→tool_loop. Diverging paths from same root. 5 failures. Correct."}
