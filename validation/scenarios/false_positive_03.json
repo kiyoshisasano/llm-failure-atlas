@@ -1,0 +1,1 @@
+{"scenario_id":"false_positive_03","description":"User correction detected but alignment is high (0.75). Minor correction, not a failure.","category":"false_positive","log":{"input":{"ambiguity_score":0.6},"interaction":{"clarification_triggered":false,"user_correction_detected":true},"reasoning":{"replanned":true},"response":{"alignment_score":0.75}}}
