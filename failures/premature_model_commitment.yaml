@@ -1,4 +1,4 @@
-[premature_model_commitment.yaml](https://github.com/user-attachments/files/26103070/premature_model_commitment.yaml)
+[premature_model_commitment.yaml](https://github.com/kiyoshisasano/llm-failure-atlas/main/failures/premature_model_commitment.yaml)
 failure_id: premature_model_commitment
 
 # Signal names in this pattern are system-wide contracts.
