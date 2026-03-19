@@ -47,6 +47,14 @@ nodes:
       Retrieved content introduces adversarial or instruction-altering signals
       that override or distort the intended task.
 
+  - id: context_truncation_loss
+    role: initiating_failure
+    layer: retrieval
+    status: defined
+    note: >
+      Critical information is lost due to context window truncation,
+      leading to incomplete retrieval and degraded downstream behavior.
+
   - id: agent_tool_call_loop
     role: propagated_failure
     layer: system
@@ -127,6 +135,21 @@ edges:
         - instruction_override_from_context
       note: >
         Observable edge. Prompt injection poisons downstream retrieval.
+
+  - id: E_truncation_to_rrd
+    from: context_truncation_loss
+    to: rag_retrieval_drift
+    relation: induces
+    semantics:
+      description: >
+        Context truncation removes critical information from the retrieval
+        context, causing downstream retrieval to miss relevant content.
+      conditions:
+        - critical_information_truncated
+        - retrieval_coverage_degraded
+      note: >
+        Observable edge. Truncation is a structural cause of retrieval
+        drift, distinct from semantic causes like cache misuse.
 
   - id: E_pmc_to_tool_loop
     from: premature_model_commitment
