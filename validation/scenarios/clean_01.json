@@ -1,0 +1,20 @@
+{
+  "scenario_id": "clean_01",
+  "description": "Normal operation. No failure signals. System should detect nothing.",
+  "category": "clean",
+  "log": {
+    "input": { "ambiguity_score": 0.2 },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": false
+    },
+    "reasoning": { "replanned": false },
+    "cache": {
+      "hit": false,
+      "similarity": 0.3,
+      "query_intent_similarity": 0.9
+    },
+    "retrieval": { "skipped": false },
+    "response": { "alignment_score": 0.85 }
+  }
+}

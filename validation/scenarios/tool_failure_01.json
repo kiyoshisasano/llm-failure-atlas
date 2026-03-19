@@ -1,0 +1,18 @@
+{
+  "scenario_id": "tool_failure_01",
+  "description": "Pure tool chain failure without retrieval issues. Tests tool system independence.",
+  "category": "tool_failure",
+  "log": {
+    "input": { "ambiguity_score": 0.75 },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": true
+    },
+    "reasoning": { "replanned": false },
+    "tools": { "repeat_count": 6 },
+    "state": { "progress_made": false, "updated_correctly": false },
+    "tool": { "output_valid": true, "output_value": "result_42" },
+    "agent": { "decision_value": "retry" },
+    "response": { "alignment_score": 0.4 }
+  }
+}

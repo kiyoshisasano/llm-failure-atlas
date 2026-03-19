@@ -1,0 +1,24 @@
+{
+  "scenario_id": "deep_reasoning_01",
+  "description": "Full reasoning chain: CF → AIF → PMC → RSF. Tests deep decomposition in realistic conditions.",
+  "category": "deep_chain",
+  "log": {
+    "input": { "ambiguity_score": 0.9 },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": true
+    },
+    "reasoning": {
+      "replanned": false,
+      "hypothesis_count": 1,
+      "contradiction_detected": true,
+      "hypothesis_abandoned": false
+    },
+    "output": {
+      "repair_attempted": true,
+      "regenerated": false,
+      "repair_quality": 0.35
+    },
+    "response": { "alignment_score": 0.3 }
+  }
+}
