@@ -19,9 +19,9 @@
     },
     {
       "id": "semantic_cache_intent_bleeding",
-      "confidence": 0.9,
+      "confidence": 0.7,
       "signals": {
-        "cache_query_intent_mismatch": true,
+        "cache_query_intent_mismatch": false,
         "retrieval_skipped_after_cache_hit": true,
         "retrieved_docs_low_intent_alignment": true
       },
@@ -87,6 +87,7 @@
     "incorrect_output"
   ],
   "alternative_paths": [],
+  "conflicts": [],
   "explanation": "Causal path detected: premature_model_commitment predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift, which propagated to incorrect_output",
   "evidence": [
     {
@@ -99,7 +100,6 @@
     {
       "failure": "semantic_cache_intent_bleeding",
       "signals": [
-        "cache_query_intent_mismatch",
         "retrieval_skipped_after_cache_hit",
         "retrieved_docs_low_intent_alignment"
       ]
