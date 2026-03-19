@@ -1,87 +1,91 @@
-{
-  "root_candidates": [
-    "premature_model_commitment"
-  ],
-  "root_ranking": [
-    {
-      "id": "premature_model_commitment",
-      "score": 0.85
-    }
-  ],
-  "failures": [
-    {
-      "id": "premature_model_commitment",
-      "confidence": 0.7,
-      "signals": {
-        "ambiguity_without_clarification": true,
-        "assumption_persistence_after_correction": true
+[
+  {
+    "failure_id": "premature_model_commitment",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "ambiguity_without_clarification": true,
+      "assumption_persistence_after_correction": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "ambiguity_without_clarification",
+        "add": 0.3
+      },
+      {
+        "type": "evidence",
+        "signal": "assumption_persistence_after_correction",
+        "add": 0.4
       }
-    },
-    {
-      "id": "semantic_cache_intent_bleeding",
-      "confidence": 0.9,
-      "signals": {
-        "cache_query_intent_mismatch": true,
-        "retrieval_skipped_after_cache_hit": true,
-        "retrieved_docs_low_intent_alignment": true
-      },
-      "caused_by": [
-        "premature_model_commitment"
-      ]
-    },
-    {
-      "id": "rag_retrieval_drift",
-      "confidence": 0.6,
-      "signals": {
-        "retrieved_docs_low_intent_alignment": true,
-        "retrieval_skipped_after_cache_hit": true
-      },
-      "caused_by": [
-        "semantic_cache_intent_bleeding"
-      ]
-    },
-    {
-      "id": "agent_tool_call_loop",
-      "confidence": 0.7,
-      "signals": {
-        "repeated_tool_call_without_progress": true,
-        "no_replanning_before_repeat": true
-      },
-      "caused_by": [
-        "premature_model_commitment"
-      ]
-    }
-  ],
-  "causal_links": [
-    {
-      "from": "premature_model_commitment",
-      "to": "semantic_cache_intent_bleeding",
-      "relation": "predisposes",
-      "description": "Early hypothesis fixation increases the probability of cache misuse: a committed interpretation accepts high-similarity cache hits that conflict with the actual user intent."
-    },
-    {
-      "from": "semantic_cache_intent_bleeding",
-      "to": "rag_retrieval_drift",
-      "relation": "induces",
-      "description": "Cache reuse with intent mismatch leads to degraded retrieval behavior."
-    },
-    {
-      "from": "premature_model_commitment",
-      "to": "agent_tool_call_loop",
-      "relation": "predisposes",
-      "description": "Early commitment without replanning can cause repeated tool use under an invalid or unchanged assumption."
-    }
-  ],
-  "causal_paths": [
-    [
-      "premature_model_commitment",
-      "semantic_cache_intent_bleeding",
-      "rag_retrieval_drift"
-    ],
-    [
-      "premature_model_commitment",
-      "agent_tool_call_loop"
     ]
-  ],
-  "explanation": "Causal path detected: premature_model_commitment predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift"
-}
+  },
+  {
+    "failure_id": "semantic_cache_intent_bleeding",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "cache_query_intent_mismatch": false,
+      "retrieval_skipped_after_cache_hit": true,
+      "retrieved_docs_low_intent_alignment": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "retrieval_skipped_after_cache_hit",
+        "add": 0.4
+      },
+      {
+        "type": "symptom",
+        "signal": "retrieved_docs_low_intent_alignment",
+        "add": 0.3
+      }
+    ]
+  },
+  {
+    "failure_id": "rag_retrieval_drift",
+    "diagnosed": true,
+    "confidence": 0.6,
+    "threshold": 0.5,
+    "signals": {
+      "retrieved_docs_low_intent_alignment": true,
+      "retrieval_skipped_after_cache_hit": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "retrieval_skipped_after_cache_hit",
+        "add": 0.4
+      },
+      {
+        "type": "symptom",
+        "signal": "retrieved_docs_low_intent_alignment",
+        "add": 0.2
+      }
+    ]
+  },
+  {
+    "failure_id": "agent_tool_call_loop",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "repeated_tool_call_without_progress": true,
+      "no_replanning_before_repeat": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "repeated_tool_call_without_progress",
+        "add": 0.4
+      },
+      {
+        "type": "evidence",
+        "signal": "no_replanning_before_repeat",
+        "add": 0.3
+      }
+    ]
+  }
+]
