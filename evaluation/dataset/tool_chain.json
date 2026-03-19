@@ -1,0 +1,115 @@
+{
+  "case_id": "tool_chain",
+  "log": {
+    "input": {
+      "ambiguity_score": 0.8
+    },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": true
+    },
+    "reasoning": {
+      "replanned": false
+    },
+    "tools": {
+      "repeat_count": 4
+    },
+    "state": {
+      "progress_made": false,
+      "updated_correctly": false
+    },
+    "tool": {
+      "output_valid": true,
+      "output_value": "42"
+    },
+    "agent": {
+      "decision_value": "search_again"
+    }
+  },
+  "matcher_output": [
+    {
+      "failure_id": "premature_model_commitment",
+      "diagnosed": true,
+      "confidence": 0.7,
+      "threshold": 0.6,
+      "signals": {
+        "ambiguity_without_clarification": true,
+        "assumption_persistence_after_correction": true
+      },
+      "applied_modifiers": [
+        {
+          "type": "evidence",
+          "signal": "ambiguity_without_clarification",
+          "add": 0.3
+        },
+        {
+          "type": "evidence",
+          "signal": "assumption_persistence_after_correction",
+          "add": 0.4
+        }
+      ]
+    },
+    {
+      "failure_id": "agent_tool_call_loop",
+      "diagnosed": true,
+      "confidence": 0.7,
+      "threshold": 0.6,
+      "signals": {
+        "repeated_tool_call_without_progress": true,
+        "no_replanning_before_repeat": true
+      },
+      "applied_modifiers": [
+        {
+          "type": "evidence",
+          "signal": "repeated_tool_call_without_progress",
+          "add": 0.4
+        },
+        {
+          "type": "evidence",
+          "signal": "no_replanning_before_repeat",
+          "add": 0.3
+        }
+      ]
+    },
+    {
+      "failure_id": "tool_result_misinterpretation",
+      "diagnosed": true,
+      "confidence": 0.7,
+      "threshold": 0.6,
+      "signals": {
+        "tool_output_misaligned_with_state": true,
+        "decision_inconsistent_with_tool_output": true
+      },
+      "applied_modifiers": [
+        {
+          "type": "evidence",
+          "signal": "tool_output_misaligned_with_state",
+          "add": 0.4
+        },
+        {
+          "type": "evidence",
+          "signal": "decision_inconsistent_with_tool_output",
+          "add": 0.3
+        }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "failures": [
+      "premature_model_commitment",
+      "agent_tool_call_loop",
+      "tool_result_misinterpretation"
+    ],
+    "root": "premature_model_commitment",
+    "root_candidates": [
+      "premature_model_commitment"
+    ],
+    "primary_path": [
+      "premature_model_commitment",
+      "agent_tool_call_loop",
+      "tool_result_misinterpretation"
+    ],
+    "alternative_paths": [],
+    "conflicts": []
+  }
+}

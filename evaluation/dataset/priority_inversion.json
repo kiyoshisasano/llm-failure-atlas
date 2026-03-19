@@ -1,0 +1,112 @@
+{
+  "case_id": "priority_inversion",
+  "log": {
+    "instruction": {
+      "system_priority_respected": false
+    },
+    "context": {
+      "external_instruction_weight": 0.85
+    },
+    "retrieval": {
+      "contains_instruction": true,
+      "override_detected": true,
+      "adversarial_score": 0.8,
+      "skipped": true,
+      "expected_coverage": 0.3
+    },
+    "cache": {
+      "hit": true,
+      "similarity": 0.89,
+      "query_intent_similarity": 0.61
+    },
+    "response": {
+      "alignment_score": 0.3
+    }
+  },
+  "matcher_output": [
+    {
+      "failure_id": "instruction_priority_inversion",
+      "diagnosed": true,
+      "confidence": 0.7,
+      "threshold": 0.6,
+      "signals": {
+        "system_instruction_overridden": true,
+        "external_instruction_dominant": true
+      },
+      "applied_modifiers": [
+        {
+          "type": "evidence",
+          "signal": "system_instruction_overridden",
+          "add": 0.4
+        },
+        {
+          "type": "evidence",
+          "signal": "external_instruction_dominant",
+          "add": 0.3
+        }
+      ]
+    },
+    {
+      "failure_id": "prompt_injection_via_retrieval",
+      "diagnosed": true,
+      "confidence": 0.7,
+      "threshold": 0.6,
+      "signals": {
+        "retrieved_context_instruction_override": true,
+        "retrieved_context_adversarial_pattern": true
+      },
+      "applied_modifiers": [
+        {
+          "type": "evidence",
+          "signal": "retrieved_context_instruction_override",
+          "add": 0.4
+        },
+        {
+          "type": "evidence",
+          "signal": "retrieved_context_adversarial_pattern",
+          "add": 0.3
+        }
+      ]
+    },
+    {
+      "failure_id": "rag_retrieval_drift",
+      "diagnosed": true,
+      "confidence": 0.6,
+      "threshold": 0.5,
+      "signals": {
+        "retrieved_docs_low_intent_alignment": true,
+        "retrieval_skipped_after_cache_hit": true
+      },
+      "applied_modifiers": [
+        {
+          "type": "evidence",
+          "signal": "retrieval_skipped_after_cache_hit",
+          "add": 0.4
+        },
+        {
+          "type": "symptom",
+          "signal": "retrieved_docs_low_intent_alignment",
+          "add": 0.2
+        }
+      ]
+    }
+  ],
+  "ground_truth": {
+    "failures": [
+      "instruction_priority_inversion",
+      "prompt_injection_via_retrieval",
+      "rag_retrieval_drift"
+    ],
+    "root": "instruction_priority_inversion",
+    "root_candidates": [
+      "instruction_priority_inversion"
+    ],
+    "primary_path": [
+      "instruction_priority_inversion",
+      "prompt_injection_via_retrieval",
+      "rag_retrieval_drift"
+    ],
+    "alternative_paths": [],
+    "conflicts": []
+  }
+}
