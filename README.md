@@ -243,14 +243,15 @@ This is a concrete application of [Phase Loop Dynamics (PLD)](https://github.com
 
 ## Status
 
-| Capability                | Status                     |
-| ------------------------- | -------------------------- |
-| Multi-failure modeling    | ✅ supported                |
-| Linear causal chain       | ✅ defined                  |
-| Branching graph           | ✅ defined                  |
-| Competing causal paths    | ✅ defined                  |
-| Machine-readable patterns | ✅ supported                |
-| Root ranking              | ✅ supported (via debugger) |
+| Capability | Status |
+|---|---|
+| Multi-failure modeling | ✅ supported |
+| Linear causal chain | ✅ defined |
+| Branching graph | ✅ defined |
+| Competing causal paths | ✅ defined |
+| Multi-system failure modeling (retrieval + tool) | ✅ defined |
+| Machine-readable patterns | ✅ supported |
+| Root ranking | ✅ supported (via debugger) |
 
 ---
 
