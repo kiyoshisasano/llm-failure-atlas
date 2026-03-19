@@ -1,0 +1,58 @@
+[
+  {
+    "scenario_id": "adversarial_03",
+    "category": "adversarial",
+    "type": "over_detection",
+    "detail": "6 failures detected",
+    "failures": [
+      "incorrect_output",
+      "instruction_priority_inversion",
+      "premature_model_commitment",
+      "prompt_injection_via_retrieval",
+      "rag_retrieval_drift",
+      "semantic_cache_intent_bleeding"
+    ]
+  },
+  {
+    "scenario_id": "ambiguous_03",
+    "category": "ambiguous",
+    "type": "threshold_boundary",
+    "failure": "semantic_cache_intent_bleeding",
+    "detail": "Confidence (0.6) exactly at threshold (0.6)"
+  },
+  {
+    "scenario_id": "deep_reasoning_02",
+    "category": "deep_chain",
+    "type": "over_detection",
+    "detail": "6 failures detected",
+    "failures": [
+      "assumption_invalidation_failure",
+      "clarification_failure",
+      "incorrect_output",
+      "premature_model_commitment",
+      "rag_retrieval_drift",
+      "semantic_cache_intent_bleeding"
+    ]
+  },
+  {
+    "scenario_id": "false_positive_01",
+    "category": "false_positive",
+    "type": "threshold_boundary",
+    "failure": "semantic_cache_intent_bleeding",
+    "detail": "Single detection with good alignment (0.8). Confidence=0.7"
+  },
+  {
+    "scenario_id": "false_positive_02",
+    "category": "false_positive",
+    "type": "threshold_boundary",
+    "failure": "semantic_cache_intent_bleeding",
+    "detail": "Single detection with good alignment (0.9). Confidence=0.7"
+  },
+  {
+    "scenario_id": "partial_signal_03",
+    "category": "partial_signal",
+    "type": "threshold_boundary",
+    "failure": "semantic_cache_intent_bleeding",
+    "detail": "Confidence (0.6) exactly at threshold (0.6)"
+  }
+]
