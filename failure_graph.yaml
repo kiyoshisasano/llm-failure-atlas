@@ -1,4 +1,15 @@
-version: 1.1
+version: 1
+
+# Graph rules (enforced by convention, validated manually):
+#   [ ] node.id must match failure_id in the corresponding pattern file
+#   [ ] edge.from and edge.to must reference existing node ids
+#   [ ] edge.conditions must NOT use signal names (use semantic names)
+#   [ ] edge.relation must be one of: predisposes | induces | propagates_to
+#   [ ] node.layer must be one of: reasoning | system | retrieval | output
+#   [ ] status: planned nodes are excluded by graph_loader at runtime
+#
+# This graph is NOT used for diagnosis.
+# It is used only for: causal interpretation, path construction, explanation.
 
 contracts:
   node_id_matches_failure_id: true
