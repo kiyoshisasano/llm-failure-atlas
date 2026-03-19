@@ -67,6 +67,7 @@
     "tool_result_misinterpretation"
   ],
   "alternative_paths": [],
+  "conflicts": [],
   "explanation": "Causal path detected: premature_model_commitment predisposed agent_tool_call_loop, which induced tool_result_misinterpretation",
   "evidence": [
     {
