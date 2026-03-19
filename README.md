@@ -256,6 +256,3 @@ This is a concrete application of [Phase Loop Dynamics (PLD)](https://github.com
 * Introduce competing root causes across branches
 * Deepen reasoning-layer failure modeling
 * Extend outcome-layer diagnosability
-
-が README 上できれいに一致します。
-```
