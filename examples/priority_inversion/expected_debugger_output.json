@@ -1,0 +1,71 @@
+{
+  "root_candidates": [
+    "instruction_priority_inversion"
+  ],
+  "root_ranking": [
+    {
+      "id": "instruction_priority_inversion",
+      "score": 0.85
+    }
+  ],
+  "failures": [
+    {
+      "id": "instruction_priority_inversion",
+      "confidence": 0.7,
+      "signals": {
+        "system_instruction_overridden": true,
+        "external_instruction_dominant": true
+      }
+    },
+    {
+      "id": "prompt_injection_via_retrieval",
+      "confidence": 0.7,
+      "signals": {
+        "retrieved_context_instruction_override": true,
+        "retrieved_context_adversarial_pattern": true
+      },
+      "caused_by": [
+        "instruction_priority_inversion"
+      ]
+    },
+    {
+      "id": "rag_retrieval_drift",
+      "confidence": 0.6,
+      "signals": {
+        "retrieved_docs_low_intent_alignment": true,
+        "retrieval_skipped_after_cache_hit": true
+      },
+      "caused_by": [
+        "prompt_injection_via_retrieval"
+      ]
+    }
+  ],
+  "causal_links": [
+    {
+      "from": "instruction_priority_inversion",
+      "to": "prompt_injection_via_retrieval",
+      "relation": "predisposes",
+      "description": "Incorrect instruction prioritization makes the system susceptible to adversarial or conflicting retrieved instructions."
+    },
+    {
+      "from": "prompt_injection_via_retrieval",
+      "to": "rag_retrieval_drift",
+      "relation": "induces",
+      "description": "Adversarial or instruction-altering retrieved content distorts retrieval relevance and leads to degraded retrieval behavior."
+    }
+  ],
+  "causal_paths": [
+    [
+      "instruction_priority_inversion",
+      "prompt_injection_via_retrieval",
+      "rag_retrieval_drift"
+    ]
+  ],
+  "primary_path": [
+    "instruction_priority_inversion",
+    "prompt_injection_via_retrieval",
+    "rag_retrieval_drift"
+  ],
+  "alternative_paths": [],
+  "explanation": "Causal path detected: instruction_priority_inversion predisposed prompt_injection_via_retrieval, which induced rag_retrieval_drift"
+}

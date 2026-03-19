@@ -1,0 +1,17 @@
+{
+  "instruction": { "system_priority_respected": false },
+  "context": { "external_instruction_weight": 0.85 },
+  "retrieval": {
+    "contains_instruction": true,
+    "override_detected": true,
+    "adversarial_score": 0.8,
+    "skipped": true,
+    "expected_coverage": 0.3
+  },
+  "cache": {
+    "hit": true,
+    "similarity": 0.89,
+    "query_intent_similarity": 0.61
+  },
+  "response": { "alignment_score": 0.3 }
+}
