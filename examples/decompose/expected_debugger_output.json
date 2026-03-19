@@ -18,6 +18,17 @@
       }
     },
     {
+      "id": "assumption_invalidation_failure",
+      "confidence": 0.7,
+      "signals": {
+        "contradiction_detected_but_ignored": true,
+        "no_hypothesis_branching": true
+      },
+      "caused_by": [
+        "clarification_failure"
+      ]
+    },
+    {
       "id": "premature_model_commitment",
       "confidence": 0.7,
       "signals": {
@@ -25,7 +36,7 @@
         "assumption_persistence_after_correction": true
       },
       "caused_by": [
-        "clarification_failure"
+        "assumption_invalidation_failure"
       ]
     },
     {
@@ -55,9 +66,15 @@
   "causal_links": [
     {
       "from": "clarification_failure",
+      "to": "assumption_invalidation_failure",
+      "relation": "predisposes",
+      "description": "Lack of clarification under ambiguity leads the system to form an assumption that it subsequently fails to invalidate."
+    },
+    {
+      "from": "assumption_invalidation_failure",
       "to": "premature_model_commitment",
       "relation": "predisposes",
-      "description": "Lack of clarification under ambiguity leads to early commitment to a single interpretation."
+      "description": "Failure to invalidate an incorrect assumption leads to premature commitment to a single interpretation."
     },
     {
       "from": "premature_model_commitment",
@@ -75,6 +92,7 @@
   "causal_paths": [
     [
       "clarification_failure",
+      "assumption_invalidation_failure",
       "premature_model_commitment",
       "semantic_cache_intent_bleeding",
       "rag_retrieval_drift"
@@ -82,10 +100,11 @@
   ],
   "primary_path": [
     "clarification_failure",
+    "assumption_invalidation_failure",
     "premature_model_commitment",
     "semantic_cache_intent_bleeding",
     "rag_retrieval_drift"
   ],
   "alternative_paths": [],
-  "explanation": "Causal path detected: clarification_failure predisposed premature_model_commitment, which predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift"
+  "explanation": "Causal path detected: clarification_failure predisposed assumption_invalidation_failure, which predisposed premature_model_commitment, which predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift"
 }
