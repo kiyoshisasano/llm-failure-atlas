@@ -1,0 +1,69 @@
+failure_id: clarification_failure
+
+# Signal names in this pattern are system-wide contracts.
+# Rules:
+#   - A signal name must have exactly one definition across all patterns.
+#   - Do not redefine the same signal name with a different rule.
+#   - If a different threshold is needed, define a new signal name.
+signal_contract:
+  shared_definitions: true
+
+# Clarification failure telemetry contract
+# Required log fields:
+#   input.ambiguity_score            float (0.0–1.0)
+#   interaction.clarification_triggered bool
+#   reasoning.hypothesis_count       int (>= 0)
+#
+# Note: This pattern detects the failure to request clarification
+# when input is ambiguous. It is distinct from PMC: this captures
+# the trigger condition, not the downstream commitment state.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    # NOTE: This is NOT the same as PMC's ambiguity_without_clarification.
+    # PMC uses threshold >= 0.7 (high ambiguity collapsed without asking).
+    # This uses >= 0.6 (moderate ambiguity where clarification was warranted).
+    - signal: ambiguity_detected_without_clarification
+      from:
+        - input.ambiguity_score
+        - interaction.clarification_triggered
+      rule: input.ambiguity_score >= 0.6 and interaction.clarification_triggered == false
+      comment: ambiguity detected but clarification was not requested
+
+    - signal: no_hypothesis_branching
+      from:
+        - reasoning.hypothesis_count
+      rule: reasoning.hypothesis_count <= 1
+      comment: system committed to a single interpretation without branching
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # ambiguity without clarification alone may be acceptable
+  # (system may have high confidence in a single interpretation).
+  # no hypothesis branching alone may be fine (unambiguous input).
+  # the failure requires both: ambiguity was detected, clarification
+  # was not triggered, AND the system did not branch hypotheses.
+  # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.6 → diagnosed
+  # confidence(ambiguity only) = 0.4 < 0.6 → not diagnosed
+  # confidence(branching only) = 0.3 < 0.6 → not diagnosed
+
+  evidence_modifiers:
+    - signal: ambiguity_detected_without_clarification
+      add: 0.4
+
+    - signal: no_hypothesis_branching
+      add: 0.3
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0
