@@ -62,5 +62,11 @@
       "rag_retrieval_drift"
     ]
   ],
+  "primary_path": [
+    "premature_model_commitment",
+    "semantic_cache_intent_bleeding",
+    "rag_retrieval_drift"
+  ],
+  "alternative_paths": [],
   "explanation": "Causal path detected: premature_model_commitment predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift"
 }
