@@ -1,0 +1,67 @@
+[premature_model_commitment.yaml](https://github.com/user-attachments/files/26103070/premature_model_commitment.yaml)
+failure_id: premature_model_commitment
+
+# Signal names in this pattern are system-wide contracts.
+# Rules:
+#   - A signal name must have exactly one definition across all patterns.
+#   - Do not redefine the same signal name with a different rule.
+#   - If a different threshold is needed, define a new signal name.
+signal_contract:
+  shared_definitions: true
+
+# PMC telemetry contract
+# Required log fields:
+#   input.ambiguity_score               float (0.0–1.0)
+#   interaction.clarification_triggered bool
+#   interaction.user_correction_detected bool
+#   reasoning.replanned                 bool
+#
+# Note: PMC is a turn-aware failure. These fields should reflect
+# the state across the current reasoning turn, not a single event.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: ambiguity_without_clarification
+      from:
+        - input.ambiguity_score
+        - interaction.clarification_triggered
+      rule: input.ambiguity_score >= 0.7 and interaction.clarification_triggered == false
+      comment: ambiguous input collapsed without clarification
+
+    - signal: assumption_persistence_after_correction
+      from:
+        - interaction.user_correction_detected
+        - reasoning.replanned
+      rule: interaction.user_correction_detected == true and reasoning.replanned == false
+      comment: initial assumption persisted after user correction
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # ambiguity alone is not PMC — the system may still respond correctly.
+  # persistence alone is not PMC — the correction may be minor.
+  # PMC requires: early commitment (ambiguity + no clarification)
+  #           AND failure to re-evaluate (correction + no replanning).
+  # confidence(both) = 0.3 + 0.4 = 0.7 >= 0.6 → diagnosed
+  # confidence(ambiguity only) = 0.3 < 0.6 → not diagnosed
+  # confidence(persistence only) = 0.4 < 0.6 → not diagnosed
+
+  evidence_modifiers:
+    - signal: ambiguity_without_clarification
+      add: 0.3
+
+    - signal: assumption_persistence_after_correction
+      add: 0.4
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0
