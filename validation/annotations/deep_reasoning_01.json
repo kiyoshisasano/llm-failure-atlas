@@ -1,0 +1,1 @@
+{"scenario_id":"deep_reasoning_01","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"Full 5-failure chain CF→AIF→PMC→RSF correctly detected. incorrect_output also detected as terminal node. Deep decomposition working as designed."}

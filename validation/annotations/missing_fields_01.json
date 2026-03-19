@@ -1,0 +1,1 @@
+{"scenario_id":"missing_fields_01","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"Graceful degradation with incomplete telemetry. Zero failures detected, zero crashes."}

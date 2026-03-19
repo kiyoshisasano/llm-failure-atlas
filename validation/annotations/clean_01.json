@@ -1,0 +1,1 @@
+{"scenario_id":"clean_01","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"Correctly detected zero failures in a clean scenario. No false positives."}

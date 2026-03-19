@@ -1,0 +1,1 @@
+{"scenario_id":"tool_failure_01","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"Tool chain PMC→TL→TMI correctly detected. PMC is legitimate here (ambiguity=0.75, no clarification, correction detected, no replanning). IO also detected via low alignment + correction."}

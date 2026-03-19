@@ -1,0 +1,1 @@
+{"scenario_id":"multi_cause_01","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"5 failures detected. PMC→SCIB→RRD→IO as primary, CTL as independent root. Conflict resolution correctly identifies SCIB as winner over CTL. Multi-cause scenario handled well."}

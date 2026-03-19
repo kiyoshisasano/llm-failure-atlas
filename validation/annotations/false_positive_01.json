@@ -1,0 +1,1 @@
+{"scenario_id":"false_positive_01","annotator":"system_analysis","root_score":1,"path_score":1,"explanation_score":1,"comment":"SCIB detected despite good alignment (0.8). cache_query_intent_similarity=0.6 < 0.75 triggered the signal. Technically correct per pattern rules, but in practice this is borderline. The system correctly detected only 1 failure, not over-detecting."}

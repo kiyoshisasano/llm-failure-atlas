@@ -1,0 +1,1 @@
+{"scenario_id":"partial_signal_01","annotator":"system_analysis","root_score":2,"path_score":2,"explanation_score":2,"comment":"Correctly detected SCIB and RRD only. PMC did NOT fire because clarification_triggered=true. This is the correct behavior."}
