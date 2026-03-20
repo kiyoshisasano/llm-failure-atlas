@@ -36,18 +36,17 @@ cd llm-failure-atlas
 pip install -r requirements.txt
 ```
 
-Detect failures from a sample log:
+Run diagnosis using pre-generated matcher output:
 
 ```bash
-# Run matcher on sample log
-python matcher.py examples/simple/log.json
-
-# Pass result to debugger (separate repository)
+# Pass example matcher output to debugger
 python ../agent-failure-debugger/pipeline.py examples/simple/matcher_output.json --use-learning
 
 # Measure KPIs
 python compute_kpi.py
 ```
+
+> **Note:** Pattern definitions are in `failures/*.yaml`. A reference matcher implementation is planned but not yet included. Pre-generated `matcher_output.json` files are provided in each `examples/` directory for immediate use with the debugger.
 
 ---
 
@@ -56,12 +55,12 @@ python compute_kpi.py
 ```
 log
   → signals (pattern extraction)
-  → failure detection (matcher)
+  → failure detection (matcher — external or custom)
   → failure graph (Atlas)
   → causal interpretation + fix (debugger)
 ```
 
-The Atlas provides the **structure and detection**. The [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) provides interpretation, explanation, fix generation, and auto-apply.
+The Atlas provides the **structure and pattern definitions**. Detection can be implemented against the YAML pattern files in `failures/`. The [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) provides interpretation, explanation, fix generation, and auto-apply.
 
 ---
 
@@ -130,7 +129,6 @@ Exclusivity constraint: `semantic_cache_intent_bleeding`, `prompt_injection_via_
 ```
 llm-failure-atlas/
   failure_graph.yaml           # canonical causal graph (12 nodes, 12 edges)
-  matcher.py                   # log → signals → diagnosed failures
   compute_kpi.py               # 6 operational KPIs
   failures/                    # 12 failure pattern definitions (YAML)
   examples/                    # 10 example cases (log + matcher_output + expected)
@@ -142,6 +140,7 @@ llm-failure-atlas/
     threshold_policy.json      # threshold adjustment proposals
     (runtime generated)        # fix_effectiveness.json, calibration_history.json,
                                # suggestions.json, run_history.json
+  docs/                        # deep analysis documents
 ```
 
 ---
@@ -192,7 +191,7 @@ This graph is **not used for diagnosis**. It is used only for causal interpretat
 
 - **Graph-first** — failures are defined by their position in a causal structure
 - **Signal uniqueness** — no duplicated signal definitions across patterns
-- **Separation of concerns** — Atlas (structure + detection), debugger (interpretation + fix)
+- **Separation of concerns** — Atlas (structure + detection patterns), debugger (interpretation + fix)
 - **Learning is suggestion-only** — patterns, graph, and templates are never auto-modified
 
 ---
