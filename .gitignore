@@ -21,12 +21,14 @@ env/
 .DS_Store
 Thumbs.db
 
-# Runtime generated learning stores
-# (update_policy.py creates these at runtime)
-learning/fix_effectiveness.json
-learning/calibration_history.json
-learning/suggestions.json
-learning/run_history.json
+# Runtime generated
+patches/
+snapshot.json
+*.log
+
+# Development test artifacts
+input.json
+debugger_output.json
 
 # Environment
 .env
