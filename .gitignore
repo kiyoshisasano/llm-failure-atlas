@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime generated learning stores
+# (update_policy.py creates these at runtime)
+learning/fix_effectiveness.json
+learning/calibration_history.json
+learning/suggestions.json
+learning/run_history.json
+
+# Environment
+.env
+.env.local
