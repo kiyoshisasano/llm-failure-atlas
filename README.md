@@ -140,13 +140,21 @@ Signal extraction follows 3 tiers: deterministic (direct field mapping), compute
 
 ## Execution Pipeline
 
-```
-raw agent log
-  → adapter (Phase 24)
-    → matcher input (telemetry)
-      → matcher.py (signal extraction + diagnosis)
-        → failure graph (Atlas)
-          → debugger (causal interpretation + fix + auto-apply)
+```mermaid
+flowchart LR
+    Log[(Raw Agent Log)] --> Adapter[Adapter<br>Phase 24]
+    Adapter --> Telemetry[Matcher Input<br>Telemetry]
+    Telemetry --> Matcher[matcher.py<br>Detection]
+    Matcher --> Graph[(Failure Graph<br>Atlas)]
+    Graph --> Debugger[Debugger Pipeline<br>Fix & Auto-apply]
+    
+    classDef data fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000;
+    classDef process fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000;
+    classDef atlas fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px,color:#000;
+    
+    class Log,Telemetry data;
+    class Adapter,Matcher process;
+    class Graph,Debugger atlas;
 ```
 
 The Atlas provides the **structure, detection patterns, and adapters**. The [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) provides interpretation, explanation, fix generation, and auto-apply.
@@ -167,17 +175,40 @@ The Atlas makes these **competing causal paths explicit**.
 
 ## Causal Graph
 
-```
-clarification_failure
-  → assumption_invalidation_failure
-    → premature_model_commitment
-      ├─ semantic_cache_intent_bleeding → rag_retrieval_drift → incorrect_output
-      ├─ prompt_injection_via_retrieval → rag_retrieval_drift → incorrect_output
-      ├─ agent_tool_call_loop → tool_result_misinterpretation
-      └─ repair_strategy_failure
+```mermaid
+graph TD
+    %% Reasoning Layer
+    CF[clarification_failure] --> AIF[assumption_invalidation_failure]
+    AIF --> PMC[premature_model_commitment]
 
-instruction_priority_inversion → prompt_injection_via_retrieval
-context_truncation_loss → rag_retrieval_drift → incorrect_output
+    %% Downstream from PMC
+    PMC --> SCIB[semantic_cache_intent_bleeding]
+    PMC --> PIVR[prompt_injection_via_retrieval]
+    PMC --> ATCL[agent_tool_call_loop]
+    PMC --> RSF[repair_strategy_failure]
+
+    %% Other Root/Upstream Causes
+    IPI[instruction_priority_inversion] --> PIVR
+    CTL[context_truncation_loss] --> RRD[rag_retrieval_drift]
+
+    %% Intermediate to Output
+    SCIB --> RRD
+    PIVR --> RRD
+    RRD --> IO((incorrect_output))
+    ATCL --> TRM[tool_result_misinterpretation]
+
+    %% Styling based on Layers
+    classDef reasoning fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px,color:#000;
+    classDef retrieval fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000;
+    classDef tool fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000;
+    classDef output fill:#ffebee,stroke:#e53935,stroke-width:4px,color:#000;
+    classDef instruction fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000;
+
+    class CF,AIF,PMC,RSF reasoning;
+    class SCIB,PIVR,CTL,RRD retrieval;
+    class ATCL,TRM tool;
+    class IO output;
+    class IPI instruction;
 ```
 
 Exclusivity constraint: `semantic_cache_intent_bleeding`, `prompt_injection_via_retrieval`, and `context_truncation_loss` cannot share the same root (soft exclusivity).
