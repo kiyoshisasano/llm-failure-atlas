@@ -22,45 +22,134 @@ The Atlas defines:
 - **What failures exist** — 12 failure patterns across 5 layers
 - **How they relate causally** — a directed graph with 12 edges
 - **How to detect them** — signal-based pattern matching (22 signals)
+- **How to adapt real logs** — adapters for LangChain / LangSmith traces
 - **How to measure system health** — 6 operational KPIs
 
 LLM systems fail in structured, repeatable ways. The Atlas makes those structures explicit and machine-readable.
 
 ---
 
-## Quickstart
+## 1-Minute Demo
 
 ```bash
 git clone https://github.com/kiyoshisasano/llm-failure-atlas.git
 cd llm-failure-atlas
 pip install -r requirements.txt
+
+# Clone debugger as sibling (for full pipeline)
+cd ..
+git clone https://github.com/kiyoshisasano/agent-failure-debugger.git
+cd agent-failure-debugger && pip install -r requirements.txt && cd ../llm-failure-atlas
+
+# Run demo
+python quickstart_demo.py
 ```
 
-Run diagnosis using pre-generated matcher output:
+Output:
 
-```bash
-# Pass example matcher output to debugger
-python ../agent-failure-debugger/pipeline.py examples/simple/matcher_output.json --use-learning
+```
+🚀 LLM Failure Atlas — Quickstart Demo
 
-# Measure KPIs
-python compute_kpi.py
+  Step 1: Load raw agent trace
+  Source: sample_langchain_trace.json
+  Query:  Change my flight to tomorrow morning
+  Output: I've found several hotels near the airport for you.
+
+  Step 2: Adapt trace → matcher input
+  Cache hit:      True
+  Intent match:   0.0
+  Tool repeats:   2
+  User corrected: True
+
+  Step 3: Run matcher → detect failures
+  ✅ incorrect_output    confidence=0.7
+  Total diagnosed: 1 failures
+
+  Step 4: Run debugger → diagnose root cause
+  Root cause:  incorrect_output
+  Gate:        proposal_only (score: 0.0)
 ```
 
-> **Note:** Pattern definitions are in `failures/*.yaml`. A reference matcher implementation is planned but not yet included. Pre-generated `matcher_output.json` files are provided in each `examples/` directory for immediate use with the debugger.
+The demo takes a raw LangChain trace, adapts it to matcher format, detects failures, and runs the full diagnosis pipeline.
+
+---
+
+## Adapters
+
+Adapters convert raw agent logs into the telemetry format that the matcher expects.
+
+```
+[Your Agent]
+  → LangSmith / LangChain trace
+    → Adapter
+      → matcher input (telemetry JSON)
+        → matcher.py → diagnosed failures
+          → debugger pipeline
+```
+
+### Available Adapters
+
+| Adapter | Source | File |
+|---|---|---|
+| LangChain | LangChain trace JSON | `adapters/langchain_adapter.py` |
+| LangSmith | LangSmith run-tree export | `adapters/langsmith_adapter.py` |
+
+### Usage
+
+```python
+from adapters.langchain_adapter import LangChainAdapter
+import json
+
+with open("your_trace.json") as f:
+    raw = json.load(f)
+
+adapter = LangChainAdapter()
+matcher_input = adapter.build_matcher_input(raw)
+```
+
+### Writing a Custom Adapter
+
+Extend `BaseAdapter` and implement `normalize()` and `extract_features()`:
+
+```python
+from adapters.base_adapter import BaseAdapter
+
+class MyAdapter(BaseAdapter):
+    source = "my_platform"
+
+    def normalize(self, raw_log: dict) -> dict:
+        # Convert your log format to canonical structure
+        ...
+
+    def extract_features(self, normalized: dict) -> dict:
+        # Extract matcher-compatible telemetry
+        return {
+            "input": {"ambiguity_score": ...},
+            "interaction": {"clarification_triggered": ..., "user_correction_detected": ...},
+            "reasoning": {"replanned": ...},
+            "cache": {"hit": ..., "similarity": ..., "query_intent_similarity": ...},
+            "retrieval": {"skipped": ...},
+            "response": {"alignment_score": ...},
+            "tools": {"call_count": ..., "repeat_count": ...},
+        }
+```
+
+Signal extraction follows 3 tiers: deterministic (direct field mapping), computed (heuristic scoring), and LLM-assisted (optional, for ambiguous signals like `ambiguity_without_clarification`).
 
 ---
 
 ## Execution Pipeline
 
 ```
-log
-  → signals (pattern extraction)
-  → failure detection (matcher — external or custom)
-  → failure graph (Atlas)
-  → causal interpretation + fix (debugger)
+raw agent log
+  → adapter (Phase 24)
+    → matcher input (telemetry)
+      → matcher.py (signal extraction + diagnosis)
+        → failure graph (Atlas)
+          → debugger (causal interpretation + fix + auto-apply)
 ```
 
-The Atlas provides the **structure and pattern definitions**. Detection can be implemented against the YAML pattern files in `failures/`. The [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) provides interpretation, explanation, fix generation, and auto-apply.
+The Atlas provides the **structure, detection patterns, and adapters**. The [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) provides interpretation, explanation, fix generation, and auto-apply.
 
 ---
 
@@ -129,7 +218,16 @@ Exclusivity constraint: `semantic_cache_intent_bleeding`, `prompt_injection_via_
 ```
 llm-failure-atlas/
   failure_graph.yaml           # canonical causal graph (12 nodes, 12 edges)
+  matcher.py                   # log → signals → diagnosed failures (reference)
   compute_kpi.py               # 6 operational KPIs
+  quickstart_demo.py           # 1-minute end-to-end demo
+  adapters/
+    base_adapter.py            # abstract adapter interface
+    langchain_adapter.py       # LangChain trace adapter
+    langsmith_adapter.py       # LangSmith run-tree adapter
+    sample_langchain_trace.json
+    sample_langsmith_trace.json
+    prompts/                   # Tier 3 LLM signal extraction prompts
   failures/                    # 12 failure pattern definitions (YAML)
   examples/                    # 10 example cases (log + matcher_output + expected)
   evaluation/                  # metrics.py + run_eval.py + 10 gold datasets
@@ -140,7 +238,6 @@ llm-failure-atlas/
     threshold_policy.json      # threshold adjustment proposals
     (runtime generated)        # fix_effectiveness.json, calibration_history.json,
                                # suggestions.json, run_history.json
-  docs/                        # deep analysis documents
 ```
 
 ---
@@ -173,26 +270,13 @@ Errors: 2 (over_detection, legitimate edge cases)
 
 ---
 
-## Graph Rules
-
-```
-[ ] node.id must match failure_id in the corresponding pattern file
-[ ] edge.conditions must NOT use signal names (use semantic names)
-[ ] edge.relation must be one of: predisposes | induces | propagates_to
-[ ] node.layer must be one of: reasoning | system | retrieval | output
-[ ] status: planned nodes are excluded from runtime diagnosis
-```
-
-This graph is **not used for diagnosis**. It is used only for causal interpretation, path construction, and explanation.
-
----
-
 ## Design Principles
 
 - **Graph-first** — failures are defined by their position in a causal structure
 - **Signal uniqueness** — no duplicated signal definitions across patterns
-- **Separation of concerns** — Atlas (structure + detection patterns), debugger (interpretation + fix)
+- **Separation of concerns** — Atlas (structure + detection + adapters), debugger (interpretation + fix)
 - **Learning is suggestion-only** — patterns, graph, and templates are never auto-modified
+- **Adapters do not diagnose** — they only normalize and extract features
 
 ---
 
@@ -212,8 +296,6 @@ This graph is **not used for diagnosis**. It is used only for causal interpretat
 | `three_way_conflict` | Three-way exclusivity conflict |
 | `closed_graph` | Fully connected subgraph |
 
-Each contains `log.json`, `matcher_output.json`, and `expected_debugger_output.json`.
-
 ---
 
 ## Relationship to PLD
@@ -226,18 +308,6 @@ This Atlas is a concrete application of [Phase Loop Dynamics (PLD)](https://gith
 | Propagation | Downstream failure cascade |
 | Repair | Fix generation (via debugger) |
 | Outcome | System-level effect (`incorrect_output`) |
-
-PLD provides the behavioral stability framework. The Atlas provides the failure taxonomy and causal structure that operates within it.
-
----
-
-## Why This Matters
-
-Failures are not independent.
-
-A single root cause (`premature_model_commitment`) can cascade through cache misuse, retrieval degradation, and tool loops — producing an `incorrect_output` that appears to be a simple hallucination.
-
-The Atlas makes the **full causal chain** visible, so that fixes target the root — not the symptom.
 
 ---
 
