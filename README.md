@@ -93,8 +93,33 @@ Adapters convert raw agent logs into the telemetry format that the matcher expec
 |---|---|---|
 | LangChain | LangChain trace JSON | `adapters/langchain_adapter.py` |
 | LangSmith | LangSmith run-tree export | `adapters/langsmith_adapter.py` |
+| **Callback** | **Real-time (any LangChain/LangGraph agent)** | `adapters/callback_handler.py` |
 
-### Usage
+### Real-Time Callback (recommended)
+
+No JSON export needed. Add one line to your agent and get auto-diagnosis on completion:
+
+```python
+from adapters.callback_handler import AtlasCallbackHandler
+
+handler = AtlasCallbackHandler(auto_diagnose=True)
+agent.invoke({"input": "..."}, config={"callbacks": [handler]})
+# → prints diagnosed failures automatically on completion
+```
+
+LangGraphics-style `watch()` wrapper for LangGraph:
+
+```python
+from adapters.callback_handler import watch
+
+graph = watch(workflow.compile(), auto_diagnose=True)
+await graph.ainvoke({"messages": [...]})
+# → diagnosis runs automatically, original behavior unchanged
+```
+
+Requires `pip install langchain-core`. The core atlas/debugger pipeline still requires only `pyyaml`.
+
+### Batch Usage (JSON export)
 
 ```python
 from adapters.langchain_adapter import LangChainAdapter
@@ -266,6 +291,7 @@ llm-failure-atlas/
     base_adapter.py            # abstract adapter interface
     langchain_adapter.py       # LangChain trace adapter
     langsmith_adapter.py       # LangSmith run-tree adapter
+    callback_handler.py        # Real-time LangChain/LangGraph callback + watch()
     sample_langchain_trace.json
     sample_langsmith_trace.json
     prompts/                   # Tier 3 LLM signal extraction prompts
