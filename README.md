@@ -19,9 +19,9 @@ Failures are nodes. Relationships between failures are edges. The system is defi
 
 The Atlas defines:
 
-- **What failures exist** — 12 failure patterns across 5 layers
+- **What failures exist** — 15 failure patterns (12 domain + 3 meta) across 5 layers
 - **How they relate causally** — a directed graph with 12 edges
-- **How to detect them** — signal-based pattern matching (22 signals)
+- **How to detect them** — signal-based pattern matching (28 signals)
 - **How to adapt real logs** — adapters for LangChain / LangSmith traces
 - **How to measure system health** — 6 operational KPIs
 
@@ -217,6 +217,8 @@ Exclusivity constraint: `semantic_cache_intent_bleeding`, `prompt_injection_via_
 
 ## Failure Definitions
 
+**Domain failures** (12 patterns — causal graph participants):
+
 | Failure | Layer | Description |
 |---|---|---|
 | `clarification_failure` | reasoning | Fails to request clarification under ambiguous input |
@@ -232,11 +234,19 @@ Exclusivity constraint: `semantic_cache_intent_bleeding`, `prompt_injection_via_
 | `tool_result_misinterpretation` | tool | Misinterpretation of tool output |
 | `incorrect_output` | output | Final output misaligned with user intent |
 
+**Meta failures** (3 patterns — model limitation indicators, not part of the causal graph):
+
+| Failure | Fires when | Purpose |
+|---|---|---|
+| `unmodeled_failure` | Symptoms present but no domain pattern matched | System can say "I don't know why this failed" |
+| `insufficient_observability` | Too many expected telemetry fields are missing | Distinguishes "no failure" from "cannot determine" |
+| `conflicting_signals` | Signals point in contradictory directions | Flags unreliable diagnosis for review |
+
 ---
 
 ## Signal Contract
 
-22 unique signals across 12 patterns. Signal names are system-wide contracts:
+28 unique signals across 15 patterns (22 domain + 6 meta). Signal names are system-wide contracts:
 
 - A signal name must have exactly one definition across all patterns
 - Do not redefine the same signal with a different rule
@@ -248,7 +258,7 @@ Exclusivity constraint: `semantic_cache_intent_bleeding`, `prompt_injection_via_
 
 ```
 llm-failure-atlas/
-  failure_graph.yaml           # canonical causal graph (12 nodes, 12 edges)
+  failure_graph.yaml           # canonical causal graph (15 nodes, 12 edges)
   matcher.py                   # log → signals → diagnosed failures (reference)
   compute_kpi.py               # 6 operational KPIs
   quickstart_demo.py           # 1-minute end-to-end demo
@@ -259,7 +269,7 @@ llm-failure-atlas/
     sample_langchain_trace.json
     sample_langsmith_trace.json
     prompts/                   # Tier 3 LLM signal extraction prompts
-  failures/                    # 12 failure pattern definitions (YAML)
+  failures/                    # 15 failure pattern definitions (12 domain + 3 meta)
   examples/                    # 10 example cases (log + matcher_output + expected)
   evaluation/                  # metrics.py + run_eval.py + 10 gold datasets
   validation/                  # 30 scenarios + 30 annotations + errors.json
