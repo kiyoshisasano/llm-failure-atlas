@@ -350,17 +350,17 @@ What this means in practice:
 
 [Phase Loop Dynamics (PLD)](https://github.com/kiyoshisasano/agent-pld-metrics) is a runtime governance layer that stabilizes multi-turn LLM agent execution through the loop: **Drift → Repair → Reentry → Continue → Outcome**.
 
-This system is **not a PLD runtime**. It implements a **single control step** within the PLD loop — specifically, the post-incident analysis and intervention decision that feeds back into the loop.
+This system is **not a PLD runtime**. It implements a **single control step spanning analysis, intervention, and evaluation** within the PLD loop — specifically, the post-incident analysis and intervention decision that feeds back into the loop.
 
 **What this system provides to PLD:**
 
-- **Drift enrichment:** Root causes approximate drift sources, but do not directly measure real-time misalignment. Atlas failure patterns can strengthen PLD Drift Detectors.
+- **Drift enrichment:** Root causes provide a structural explanation of drift after it has been detected, but do not directly measure real-time misalignment. Atlas failure patterns can strengthen PLD Drift Detectors.
 - **Repair input:** Debugger fix generation and auto-apply gate decisions provide structured intervention proposals that PLD Repair strategies can consume.
-- **Intervention evaluation:** evaluate_fix provides before/after assessment. Reentry (re-verification) and Continue (task resumption) are external to this pipeline.
+- **Intervention evaluation:** evaluate_fix provides a structural reentry check (before/after comparison), not full task-level reentry validation. Continue (task resumption) is external to this pipeline.
 
 **Boundary clarifications:**
 
-- This pipeline represents a single control step, not a multi-turn loop. The system state is defined by the set of active failures and their causal relationships.
+- This pipeline represents a single control step spanning analysis, intervention, and evaluation — not a multi-turn loop. The system state is defined by the set of active failures and their causal relationships.
 - Outcome in this system refers to intervention results (keep / review / rollback), not full session termination states as defined by PLD.
 - Current KPIs (6 internal stability metrics) do not directly correspond to PLD operational metrics (PRDR, REI, VRL, MRBF, FR).
 
