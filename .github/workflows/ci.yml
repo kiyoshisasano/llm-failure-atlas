@@ -82,12 +82,27 @@ jobs:
       - name: Run matcher on sample trace
         run: |
           python -c "
+          import sys, json
+          sys.path.insert(0, 'adapters')
+          from langchain_adapter import LangChainAdapter
           from matcher import run
           from pathlib import Path
-          import json
+
+          # Adapt raw trace to matcher input
+          with open('adapters/sample_langchain_trace.json') as f:
+              raw = json.load(f)
+          adapter = LangChainAdapter()
+          telemetry = adapter.build_matcher_input(raw)
+
+          # Save adapted telemetry
+          tmp = '/tmp/ci_adapted.json'
+          with open(tmp, 'w') as f:
+              json.dump(telemetry, f)
+
+          # Run all patterns
           diagnosed = []
           for pf in sorted(Path('failures').glob('*.yaml')):
-              r = run(str(pf), 'adapters/sample_langchain_trace.json')
+              r = run(str(pf), tmp)
               if r.get('diagnosed'):
                   diagnosed.append(r['failure_id'])
           print(f'Diagnosed: {diagnosed}')
