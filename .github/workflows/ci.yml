@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate all failure patterns (YAML)
+        run: |
+          python -c "
+          import yaml
+          from pathlib import Path
+          errors = []
+          for f in sorted(Path('failures').glob('*.yaml')):
+              try:
+                  p = yaml.safe_load(f.read_text(encoding='utf-8'))
+                  assert 'failure_id' in p, f'missing failure_id in {f.name}'
+                  assert 'signal_extraction' in p, f'missing signal_extraction in {f.name}'
+                  assert 'diagnosis' in p, f'missing diagnosis in {f.name}'
+              except Exception as e:
+                  errors.append(f'{f.name}: {e}')
+          if errors:
+              for e in errors: print(f'FAIL: {e}')
+              exit(1)
+          print(f'OK: {len(list(Path(\"failures\").glob(\"*.yaml\")))} patterns validated')
+          "
+
+      - name: Validate failure graph
+        run: |
+          python -c "
+          import yaml
+          g = yaml.safe_load(open('failure_graph.yaml', encoding='utf-8'))
+          nodes = {n['id'] for n in g['nodes']}
+          edges = g['edges']
+          for e in edges:
+              assert e['from'] in nodes, f'edge {e[\"id\"]}: unknown from={e[\"from\"]}'
+              assert e['to'] in nodes, f'edge {e[\"id\"]}: unknown to={e[\"to\"]}'
+          print(f'OK: {len(nodes)} nodes, {len(edges)} edges')
+          "
+
+      - name: Validate signal uniqueness
+        run: |
+          python -c "
+          import yaml
+          from pathlib import Path
+          signals = {}
+          for f in sorted(Path('failures').glob('*.yaml')):
+              p = yaml.safe_load(f.read_text(encoding='utf-8'))
+              for rule in p.get('signal_extraction', {}).get('rules', []):
+                  sig = rule['signal']
+                  if sig in signals and signals[sig] != f.name:
+                      print(f'FAIL: signal \"{sig}\" defined in both {signals[sig]} and {f.name}')
+                      exit(1)
+                  signals[sig] = f.name
+          print(f'OK: {len(signals)} unique signals')
+          "
+
+      - name: Run matcher on sample trace
+        run: |
+          python -c "
+          from matcher import run
+          from pathlib import Path
+          import json
+          diagnosed = []
+          for pf in sorted(Path('failures').glob('*.yaml')):
+              r = run(str(pf), 'adapters/sample_langchain_trace.json')
+              if r.get('diagnosed'):
+                  diagnosed.append(r['failure_id'])
+          print(f'Diagnosed: {diagnosed}')
+          assert len(diagnosed) >= 1, 'Expected at least 1 failure from sample trace'
+          "
+
+      - name: Run adapter tests
+        run: |
+          python adapters/langchain_adapter.py adapters/sample_langchain_trace.json > /dev/null
+          python adapters/langsmith_adapter.py adapters/sample_langsmith_trace.json > /dev/null
+          echo "OK: both adapters passed"
