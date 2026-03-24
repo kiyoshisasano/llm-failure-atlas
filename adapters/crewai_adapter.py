@@ -245,7 +245,6 @@ if HAS_CREWAI:
             self.auto_pipeline = auto_pipeline
             self.verbose = verbose
             self._reset_state()
-            self._register_handlers()
 
         def _reset_state(self):
             self._agent_executions = []
@@ -259,8 +258,8 @@ if HAS_CREWAI:
             self._task_expected_outputs = []
             self._final_output = ""
 
-        def _register_handlers(self):
-            """Register event handlers on the CrewAI event bus."""
+        def setup_listeners(self, crewai_event_bus):
+            """Required by BaseEventListener. Registers handlers on the CrewAI event bus."""
 
             @crewai_event_bus.on(CrewKickoffStartedEvent)
             def on_crew_start(source, event):
