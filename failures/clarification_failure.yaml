@@ -8,6 +8,8 @@ failure_id: clarification_failure
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [coherence]
+
 # Clarification failure telemetry contract
 # Required log fields:
 #   input.ambiguity_score            float (0.0–1.0)

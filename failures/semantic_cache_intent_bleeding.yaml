@@ -8,6 +8,8 @@ failure_id: semantic_cache_intent_bleeding
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [density]
+
 # Phase 13 calibration applied (grid search, 90 configs, regression-constrained):
 #   intent_threshold:    0.75 → 0.55 (tighter: filters borderline mismatches)
 #   s1_weight:           0.4 → 0.2 (weakened: intent alone insufficient)

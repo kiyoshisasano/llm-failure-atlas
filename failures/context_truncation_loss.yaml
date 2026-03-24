@@ -8,6 +8,8 @@ failure_id: context_truncation_loss
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [completeness]
+
 # Context truncation telemetry contract
 # Required log fields:
 #   context.truncated           bool

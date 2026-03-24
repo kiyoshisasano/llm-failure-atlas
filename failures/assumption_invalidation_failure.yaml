@@ -8,6 +8,8 @@ failure_id: assumption_invalidation_failure
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [coherence]
+
 # Assumption invalidation failure telemetry contract
 # Required log fields:
 #   reasoning.contradiction_detected  bool

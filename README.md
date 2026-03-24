@@ -439,6 +439,32 @@ What this means in practice:
 
 ---
 
+## Cogency Framework Mapping
+
+Each failure pattern is tagged with a `cogency_tags` field referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/post/a-diagnostic-framework-for-agent-failure). His framework identifies 5 input quality properties + 2 runtime failure categories. This mapping shows which Atlas patterns correspond to which cogency failures — and where gaps remain.
+
+**Covered:**
+
+| Cogency Property | Atlas Patterns | What it catches |
+|---|---|---|
+| **Coherence** (internal) | `clarification_failure`, `assumption_invalidation_failure`, `instruction_priority_inversion`, `prompt_injection_via_retrieval`, `conflicting_signals` | Contradictory inputs, ambiguity, priority conflicts |
+| **Correctness** | `premature_model_commitment`, `repair_strategy_failure` | Wrong interpretation, wrong repair approach |
+| **Completeness** | `context_truncation_loss` | Missing information due to truncation |
+| **Density** | `semantic_cache_intent_bleeding`, `rag_retrieval_drift` | Signal buried by cache noise or retrieval degradation |
+| **Tool failure** | `agent_tool_call_loop`, `tool_result_misinterpretation` | Runtime tool execution failures |
+
+**Not yet covered (requires domain-specific signals):**
+
+| Cogency Property | Why it's hard | What would be needed |
+|---|---|---|
+| **Coherence** (external/plausibility) | Requires world knowledge to detect implausible data | Domain-specific plausibility checks or LLM-assisted verification |
+| **Sufficiency** | Invisible during execution — output looks correct but misses critical factor | Domain expert review or task-specific completeness criteria |
+| **Density** (direct) | Requires measuring signal-to-noise ratio in context window | Context analysis or attention-based metrics |
+
+These gaps are structural: they represent the boundary between rule-based detection and domain expertise. They will be addressed as real-world agent logs (e.g., from production literature monitoring or legal analysis systems) provide concrete signal definitions.
+
+---
+
 ## Relationship to PLD
 
 [Phase Loop Dynamics (PLD)](https://github.com/kiyoshisasano/agent-pld-metrics) is a runtime governance layer that stabilizes multi-turn LLM agent execution through the loop: **Drift → Repair → Reentry → Continue → Outcome**.

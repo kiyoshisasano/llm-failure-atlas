@@ -14,6 +14,8 @@ failure_id: unmodeled_failure
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [meta]
+
 # Telemetry contract:
 #   response.alignment_score             float (0.0–1.0)
 #   interaction.user_correction_detected  bool

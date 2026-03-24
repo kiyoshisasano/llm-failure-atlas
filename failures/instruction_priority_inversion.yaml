@@ -8,6 +8,8 @@ failure_id: instruction_priority_inversion
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [coherence]
+
 # Instruction priority inversion telemetry contract
 # Required log fields:
 #   instruction.system_priority_respected  bool

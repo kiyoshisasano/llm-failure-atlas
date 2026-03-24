@@ -8,6 +8,8 @@ failure_id: repair_strategy_failure
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [correctness]
+
 # Repair strategy failure telemetry contract
 # Required log fields:
 #   output.repair_attempted    bool

@@ -14,6 +14,8 @@ failure_id: insufficient_observability
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [meta]
+
 # Telemetry contract:
 #   meta.missing_field_count     int (number of expected fields absent from log)
 #   meta.total_expected_fields   int (total fields the system expects)

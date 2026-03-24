@@ -14,6 +14,8 @@ failure_id: conflicting_signals
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [coherence, meta]
+
 # Telemetry contract:
 #   cache.hit                            bool
 #   cache.query_intent_similarity        float (0.0–1.0)

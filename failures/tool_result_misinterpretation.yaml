@@ -8,6 +8,8 @@ failure_id: tool_result_misinterpretation
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [tool_failure]
+
 # Tool result misinterpretation telemetry contract
 # Required log fields:
 #   tool.output_valid        bool

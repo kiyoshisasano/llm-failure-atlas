@@ -8,6 +8,8 @@ failure_id: agent_tool_call_loop
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [tool_failure]
+
 # Tool call loop telemetry contract
 # Required log fields:
 #   tools.repeat_count    int (>= 0)

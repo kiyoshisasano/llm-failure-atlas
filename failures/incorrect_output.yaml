@@ -8,6 +8,8 @@ failure_id: incorrect_output
 signal_contract:
   shared_definitions: true
 
+cogency_tags: [outcome]
+
 # Incorrect output telemetry contract
 # Required log fields:
 #   response.alignment_score           float (0.0–1.0)
