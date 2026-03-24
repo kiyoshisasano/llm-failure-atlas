@@ -67,11 +67,16 @@ jobs:
               p = yaml.safe_load(f.read_text(encoding='utf-8'))
               for rule in p.get('signal_extraction', {}).get('rules', []):
                   sig = rule['signal']
-                  if sig in signals and signals[sig] != f.name:
-                      print(f'FAIL: signal \"{sig}\" defined in both {signals[sig]} and {f.name}')
-                      exit(1)
-                  signals[sig] = f.name
-          print(f'OK: {len(signals)} unique signals')
+                  rule_str = rule.get('rule', '')
+                  if sig in signals:
+                      prev_file, prev_rule = signals[sig]
+                      if prev_rule != rule_str:
+                          print(f'FAIL: signal \"{sig}\" has different rules:')
+                          print(f'  {prev_file}: {prev_rule}')
+                          print(f'  {f.name}: {rule_str}')
+                          exit(1)
+                  signals[sig] = (f.name, rule_str)
+          print(f'OK: {len(signals)} unique signals (some shared across patterns)')
           "
 
       - name: Run matcher on sample trace
