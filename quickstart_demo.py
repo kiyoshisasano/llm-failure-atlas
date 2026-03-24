@@ -75,7 +75,8 @@ def main():
     from matcher import run as run_matcher
 
     # Save adapted log for matcher
-    tmp_log = Path("/tmp/quickstart_adapted.json")
+    import tempfile
+    tmp_log = Path(tempfile.gettempdir()) / "quickstart_adapted.json"
     with open(tmp_log, "w") as f:
         json.dump(matcher_input, f)
 

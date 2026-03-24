@@ -180,8 +180,8 @@ def diagnose(pattern: dict, signals: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def run(pattern_path: str, log_path: str) -> dict:
-    pattern = yaml.safe_load(Path(pattern_path).read_text())
-    log = json.loads(Path(log_path).read_text())
+    pattern = yaml.safe_load(Path(pattern_path).read_text(encoding="utf-8"))
+    log = json.loads(Path(log_path).read_text(encoding="utf-8"))
 
     signals = extract_signals(pattern, log)
     result = diagnose(pattern, signals)

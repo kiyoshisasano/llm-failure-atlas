@@ -91,6 +91,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         self._final_output = ""
         self._start_time = None
         self._end_time = None
+        self._chain_depth = 0
 
     # ---- LLM events ----
 
@@ -167,20 +168,39 @@ class AtlasCallbackHandler(BaseCallbackHandler):
     # ---- Chain events ----
 
     def on_chain_start(self, serialized, inputs, **kwargs):
-        if self._start_time is None:
+        self._chain_depth += 1
+        if self._chain_depth == 1:
             self._start_time = datetime.now()
             # Capture user input
             if isinstance(inputs, dict):
-                self._user_input = (
-                    inputs.get("input", "")
-                    or inputs.get("query", "")
-                    or str(next(iter(inputs.values()), ""))
-                )
+                # LangGraph: extract from messages list
+                messages = inputs.get("messages", [])
+                if messages:
+                    for msg in (messages if isinstance(messages, list) else [messages]):
+                        # HumanMessage object
+                        if hasattr(msg, "content") and hasattr(msg, "type"):
+                            if msg.type == "human":
+                                self._user_input = msg.content
+                                break
+                        # Dict format
+                        elif isinstance(msg, dict):
+                            if msg.get("role") == "user" or "Human" in str(msg.get("id", "")):
+                                self._user_input = msg.get("content", "")
+                                break
+                # Fallback: standard input/query keys
+                if not self._user_input:
+                    self._user_input = (
+                        inputs.get("input", "")
+                        or inputs.get("query", "")
+                    )
             elif isinstance(inputs, str):
                 self._user_input = inputs
 
     def on_chain_end(self, outputs, **kwargs):
+        self._chain_depth -= 1
         self._end_time = datetime.now()
+
+        # Always capture output (last one wins)
         if isinstance(outputs, dict):
             self._final_output = (
                 outputs.get("output", "")
@@ -190,15 +210,16 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         elif isinstance(outputs, str):
             self._final_output = outputs
 
-        # Auto-diagnose on completion
-        if self.auto_diagnose or self.auto_pipeline:
+        # Auto-diagnose only on outermost chain completion
+        if self._chain_depth <= 0 and (self.auto_diagnose or self.auto_pipeline):
             self._run_diagnosis()
 
     def on_chain_error(self, error, **kwargs):
+        self._chain_depth -= 1
         self._chain_errors.append(str(error))
         self._end_time = datetime.now()
 
-        if self.auto_diagnose or self.auto_pipeline:
+        if self._chain_depth <= 0 and (self.auto_diagnose or self.auto_pipeline):
             self._run_diagnosis()
 
     # ---- Telemetry building ----
@@ -216,6 +237,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "retrieval": self._build_retrieval(),
             "response": self._build_response(),
             "tools": self._build_tools(),
+            "state": self._build_state(),
         }
 
     def _build_input(self) -> dict:
@@ -241,14 +263,46 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 clarification = True
                 break
 
+        # Infer user_correction_detected in callback mode:
+        # If the response explicitly admits failure on the original task
+        # AND pivots to a different topic, this is structurally equivalent
+        # to "the user would need to correct this."
+        correction_inferred = False
+        if self._final_output and self._user_input:
+            response = self._final_output.lower()
+            query = self._user_input.lower()
+
+            # Response admits failure
+            admits_failure = any(m in response for m in [
+                "couldn't find", "could not find", "no flights",
+                "unable to find", "no results", "unfortunately",
+                "wasn't able", "was not able",
+            ])
+
+            # Response pivots to different topic than requested
+            topic_pivot = False
+            pivot_pairs = [
+                ({"flight", "flights"}, {"hotel", "hotels", "inn", "lodge", "suites"}),
+                ({"restaurant", "restaurants"}, {"cafe", "cafes", "bar", "bars"}),
+                ({"buy", "purchase"}, {"rent", "lease"}),
+            ]
+            for query_topics, alt_topics in pivot_pairs:
+                if (query_topics & set(query.split())) and (alt_topics & set(response.split())):
+                    topic_pivot = True
+                    break
+
+            correction_inferred = admits_failure and topic_pivot
+
         return {
             "clarification_triggered": clarification,
-            "user_correction_detected": False,  # Cannot detect from callback alone
+            "user_correction_detected": correction_inferred,
         }
 
     def _build_reasoning(self) -> dict:
         llm_complete = [c for c in self._llm_calls if c.get("type") == "complete"]
         replanned = False
+        hypothesis_count = 1  # Default: single interpretation
+
         if len(llm_complete) >= 2:
             for call in llm_complete[1:]:
                 output = call.get("output", "")
@@ -257,7 +311,18 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                         "different approach", "reconsider"]):
                     replanned = True
                     break
-        return {"replanned": replanned}
+
+        # Detect hypothesis branching in LLM outputs
+        for call in llm_complete:
+            output = call.get("output", "")
+            if output and any(m in output.lower() for m in
+                              ["alternatively", "on the other hand", "another option",
+                               "option 1", "option a", "could also mean",
+                               "there are two", "there are several"]):
+                hypothesis_count = 2
+                break
+
+        return {"replanned": replanned, "hypothesis_count": hypothesis_count}
 
     def _build_cache(self) -> dict:
         # Cache info must come from retriever metadata
@@ -281,18 +346,41 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         return {"alignment_score": self._compute_alignment()}
 
     def _build_tools(self) -> dict:
-        calls = [(c["name"], c.get("input", "")) for c in self._tool_calls]
-        call_counts = Counter(calls)
-        max_repeat = max(call_counts.values()) if call_counts else 0
+        # Count by tool name only — LLM may vary params in a loop
+        name_counts = Counter(c["name"] for c in self._tool_calls)
+        max_repeat = max(name_counts.values()) if name_counts else 0
         repeat_count = max_repeat - 1 if max_repeat > 1 else 0
         error_count = sum(1 for c in self._tool_calls if c.get("error"))
 
         return {
             "call_count": len(self._tool_calls),
             "repeat_count": repeat_count,
-            "unique_tools": len(set(c["name"] for c in self._tool_calls)) if self._tool_calls else 0,
+            "unique_tools": len(name_counts) if name_counts else 0,
             "error_count": error_count,
         }
+
+    def _build_state(self) -> dict:
+        """Infer state.progress_made from tool results."""
+        if not self._tool_calls:
+            return {"progress_made": True}
+
+        # If repeated tool calls all return similar negative results, no progress
+        name_counts = Counter(c["name"] for c in self._tool_calls)
+        most_called = name_counts.most_common(1)[0] if name_counts else None
+
+        if most_called and most_called[1] >= 2:
+            tool_name = most_called[0]
+            outputs = [c.get("output", "") for c in self._tool_calls if c["name"] == tool_name]
+            # Check if all outputs indicate failure/empty
+            negative_markers = ["no ", "not found", "empty", "error", "none", "[]", "0 results"]
+            all_negative = all(
+                any(m in str(o).lower() for m in negative_markers)
+                for o in outputs if o
+            )
+            if all_negative:
+                return {"progress_made": False}
+
+        return {"progress_made": True}
 
     def _compute_intent_sim(self) -> float:
         query = self._user_input.lower()
@@ -314,36 +402,127 @@ class AtlasCallbackHandler(BaseCallbackHandler):
     def _compute_alignment(self) -> float:
         if not self._user_input or not self._final_output:
             return 0.5
-        query_words = set(self._user_input.lower().split())
-        response_words = set(self._final_output.lower().split())
+        query = self._user_input.lower()
+        response = self._final_output.lower()
+        query_words = set(query.split())
+        response_words = set(response.split())
         if not query_words:
             return 0.5
-        return round(min(1.0, len(query_words & response_words) / len(query_words)), 2)
+
+        # Base: word overlap
+        overlap = len(query_words & response_words) / len(query_words)
+
+        # Topic mismatch penalty: detect when response acts on different entity
+        # e.g., asked about flights → answered about hotels
+        topic_pairs = [
+            ({"flight", "flights", "fly", "flying", "airline"},
+             {"hotel", "hotels", "inn", "lodge", "suites", "accommodation"}),
+            ({"buy", "purchase", "order"},
+             {"rent", "lease", "subscribe"}),
+            ({"cancel", "cancellation"},
+             {"book", "booking", "reserve"}),
+        ]
+        for query_topics, response_topics in topic_pairs:
+            query_has = bool(query_topics & query_words)
+            response_has = bool(response_topics & response_words)
+            query_addressed = bool(query_topics & response_words)
+            if query_has and response_has and not query_addressed:
+                # Asked about X, got Y instead, X not addressed
+                overlap *= 0.2  # Heavy penalty
+
+        # Negation penalty: "couldn't find", "no results", "unfortunately"
+        negation_markers = ["couldn't find", "no flights", "unfortunately",
+                            "unable to find", "no results", "not available"]
+        if any(m in response for m in negation_markers):
+            overlap *= 0.5
+
+        return round(min(1.0, overlap), 2)
 
     # ---- Diagnosis ----
 
-    def _run_diagnosis(self):
-        """Run matcher (and optionally full pipeline) on collected telemetry."""
-        telemetry = self.build_telemetry()
+    # Meta failure patterns (run in second pass after domain patterns)
+    META_PATTERNS = {"unmodeled_failure", "insufficient_observability", "conflicting_signals"}
 
-        # Save for inspection
+    # Expected telemetry fields for observability checking
+    EXPECTED_FIELDS = [
+        "input.ambiguity_score",
+        "interaction.clarification_triggered",
+        "interaction.user_correction_detected",
+        "reasoning.replanned",
+        "cache.hit",
+        "cache.similarity",
+        "cache.query_intent_similarity",
+        "retrieval.skipped",
+        "response.alignment_score",
+    ]
+
+    def _count_missing_fields(self, telemetry: dict) -> tuple:
+        """Count how many expected fields are missing from telemetry."""
+        missing = 0
+        total = len(self.EXPECTED_FIELDS)
+        for field_path in self.EXPECTED_FIELDS:
+            parts = field_path.split(".")
+            obj = telemetry
+            found = True
+            for p in parts:
+                if isinstance(obj, dict) and p in obj:
+                    obj = obj[p]
+                else:
+                    found = False
+                    break
+            if not found:
+                missing += 1
+        return missing, total
+
+    def _run_diagnosis(self):
+        """Run matcher (and optionally full pipeline) on collected telemetry.
+
+        Two-pass approach:
+          Pass 1: Run domain patterns (non-meta)
+          Pass 2: Inject meta.* fields, run meta patterns
+        """
+        telemetry = self.build_telemetry()
         self.last_telemetry = telemetry
 
         try:
             from matcher import run as run_matcher
+            import tempfile
 
-            # Run all patterns
-            tmp_path = "/tmp/atlas_callback_telemetry.json"
-            with open(tmp_path, "w") as f:
+            tmp_path = os.path.join(tempfile.gettempdir(), "atlas_callback_telemetry.json")
+            failures_dir = ATLAS_ROOT / "failures"
+
+            # Pass 1: domain patterns
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(telemetry, f)
 
-            failures_dir = ATLAS_ROOT / "failures"
-            diagnosed = []
+            domain_diagnosed = []
             for pf in sorted(failures_dir.glob("*.yaml")):
+                if pf.stem in self.META_PATTERNS:
+                    continue
                 result = run_matcher(str(pf), tmp_path)
                 if result.get("diagnosed"):
-                    diagnosed.append(result)
+                    domain_diagnosed.append(result)
 
+            # Pass 2: inject meta fields, run meta patterns
+            missing_count, total_fields = self._count_missing_fields(telemetry)
+            telemetry["meta"] = {
+                "diagnosed_failure_count": len(domain_diagnosed),
+                "missing_field_count": missing_count,
+                "total_expected_fields": total_fields,
+            }
+
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(telemetry, f)
+
+            meta_diagnosed = []
+            for pf in sorted(failures_dir.glob("*.yaml")):
+                if pf.stem not in self.META_PATTERNS:
+                    continue
+                result = run_matcher(str(pf), tmp_path)
+                if result.get("diagnosed"):
+                    meta_diagnosed.append(result)
+
+            diagnosed = domain_diagnosed + meta_diagnosed
             self.last_diagnosed = diagnosed
 
             if self.verbose:
@@ -351,7 +530,8 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 print(f"  Atlas Auto-Diagnosis ({len(diagnosed)} failures detected)")
                 print(f"{'='*50}")
                 for d in diagnosed:
-                    print(f"  ✅ {d['failure_id']:40s} conf={d['confidence']}")
+                    tag = " [meta]" if d["failure_id"] in self.META_PATTERNS else ""
+                    print(f"  ✅ {d['failure_id']:40s} conf={d['confidence']}{tag}")
                 if not diagnosed:
                     print("  No failures detected.")
 
@@ -408,8 +588,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         self._final_output = ""
         self._start_time = None
         self._end_time = None
-
-
+        self._chain_depth = 0
 # ---------------------------------------------------------------------------
 # watch() wrapper (LangGraphics-style)
 # ---------------------------------------------------------------------------
