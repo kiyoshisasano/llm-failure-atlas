@@ -94,6 +94,7 @@ Adapters convert raw agent logs into the telemetry format that the matcher expec
 | LangChain | LangChain trace JSON | `adapters/langchain_adapter.py` |
 | LangSmith | LangSmith run-tree export | `adapters/langsmith_adapter.py` |
 | **Callback** | **Real-time (any LangChain/LangGraph agent)** | `adapters/callback_handler.py` |
+| **CrewAI** | **Real-time or post-hoc (CrewAI crews)** | `adapters/crewai_adapter.py` |
 
 ### Real-Time Callback (recommended)
 
@@ -118,6 +119,21 @@ await graph.ainvoke({"messages": [...]})
 ```
 
 Requires `pip install langchain-core`. The core atlas/debugger pipeline still requires only `pyyaml`.
+
+### CrewAI (event listener)
+
+```python
+from adapters.crewai_adapter import AtlasCrewListener
+
+listener = AtlasCrewListener(auto_diagnose=True)
+# Auto-registers on CrewAI event bus — no config needed
+
+crew = Crew(agents=[...], tasks=[...])
+crew.kickoff()
+# → diagnosis prints automatically on completion
+```
+
+CrewAI's `expected_output` field provides stronger alignment signals than LangGraph's word-overlap heuristic. Requires `pip install crewai`.
 
 ### Batch Usage (JSON export)
 
@@ -191,6 +207,8 @@ Agent execution events (LLM, tool, chain)
 | `reasoning.replanned` | No | Correction language in later LLM outputs |
 
 **Design principle:** The observation layer produces the same telemetry format as batch adapters. The matcher does not know whether telemetry came from a callback or a JSON export. All inference is heuristic — the symbolic core is never modified.
+
+**Framework universality:** Testing with both LangGraph and CrewAI revealed that tool repeat detection, error counting, negation detection, and state progress inference are universal. Alignment scoring, correction detection, and input extraction are framework-specific and must be re-implemented per adapter. See `docs/observation_layer_gap_analysis.md` for the full comparison.
 
 **2-pass meta diagnosis:** Domain patterns run first, then meta fields (`meta.diagnosed_failure_count`, `meta.missing_field_count`) are injected, and meta patterns (`unmodeled_failure`, `insufficient_observability`, `conflicting_signals`) run in a second pass.
 
@@ -325,6 +343,7 @@ llm-failure-atlas/
     langchain_adapter.py       # LangChain trace adapter
     langsmith_adapter.py       # LangSmith run-tree adapter
     callback_handler.py        # Real-time LangChain/LangGraph callback + watch()
+    crewai_adapter.py          # CrewAI event listener + post-hoc adapter
     sample_langchain_trace.json
     sample_langsmith_trace.json
     prompts/                   # Tier 3 LLM signal extraction prompts
