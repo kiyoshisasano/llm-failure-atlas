@@ -163,6 +163,39 @@ Signal extraction follows 3 tiers: deterministic (direct field mapping), compute
 
 ---
 
+## Observation Layer
+
+The callback handler implements an **observation layer** between raw agent events and the matcher. This layer infers telemetry fields that are not directly observable from callback events alone.
+
+**Architecture:**
+
+```
+Agent execution events (LLM, tool, chain)
+  → Callback handler (event collection)
+    → Observation layer (heuristic inference)
+      → Matcher input (telemetry JSON)
+        → Matcher (signal extraction + diagnosis)
+```
+
+**Why this exists:** In callback mode, the handler cannot observe everything. For example, `user_correction_detected` requires knowing if the user would correct the output — which hasn't happened yet. The observation layer bridges this gap with structural inference.
+
+**Inferred fields:**
+
+| Field | Observable? | Inference method |
+|---|---|---|
+| `input.ambiguity_score` | No | Word count + pronoun/vague term detection |
+| `interaction.user_correction_detected` | No | Response admits failure + pivots to different topic |
+| `response.alignment_score` | No | Word overlap − topic mismatch penalty − negation penalty |
+| `state.progress_made` | No | All repeated tool outputs contain negative markers |
+| `reasoning.hypothesis_count` | No | Branching language in LLM outputs |
+| `reasoning.replanned` | No | Correction language in later LLM outputs |
+
+**Design principle:** The observation layer produces the same telemetry format as batch adapters. The matcher does not know whether telemetry came from a callback or a JSON export. All inference is heuristic — the symbolic core is never modified.
+
+**2-pass meta diagnosis:** Domain patterns run first, then meta fields (`meta.diagnosed_failure_count`, `meta.missing_field_count`) are injected, and meta patterns (`unmodeled_failure`, `insufficient_observability`, `conflicting_signals`) run in a second pass.
+
+---
+
 ## Execution Pipeline
 
 ```mermaid
@@ -334,6 +367,30 @@ Path correctness:      84%
 Explanation clarity:   82%
 Errors: 2 (over_detection, legitimate edge cases)
 ```
+
+---
+
+## Tested with Real Agents (Stage 1)
+
+The callback handler has been tested with real LangGraph agents using the OpenAI API. These are not synthetic logs — they are actual LLM-driven multi-step executions where the agent genuinely fails.
+
+| Scenario | Agent behavior | Detected failure | conf |
+|---|---|---|---|
+| Flight → hotel pivot | Agent searches flights 3x, gives up, suggests hotels instead | `incorrect_output` | 0.7 |
+| Tool loop | Agent searches for rare product 5x with no results, never replans | `agent_tool_call_loop` | 0.7 |
+| Ambiguous cancel | User says "cancel that order" with no context, agent picks one and cancels | `clarification_failure` | 0.7 |
+
+**Observation layer findings from Stage 1:**
+
+The following heuristic improvements were required to achieve correct detection on real agent traces. None required changes to failure patterns (YAML) or matcher logic.
+
+| Problem | Root cause | Fix |
+|---|---|---|
+| `alignment_score` was 0.9 on a clearly wrong response | Word overlap alone cannot detect topic mismatch | Added topic pivot penalty + negation marker penalty |
+| `user_correction_detected` was always false | Callback mode cannot observe user follow-up | Inferred from response admitting failure + pivoting to different topic |
+| `repeat_count` was 0 despite 3 identical tool calls | Was matching on `(name, input)` tuple; LLM varied parameters | Changed to name-only counting |
+| `state.progress_made` did not exist | Not in original telemetry spec | Added: all repeated tool outputs contain negative markers → false |
+| User input extracted as serialized state object | LangGraph passes `{"messages": [...]}` not `{"input": "..."}` | Added HumanMessage extraction from messages list |
 
 ---
 
