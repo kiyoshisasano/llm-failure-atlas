@@ -462,7 +462,7 @@ What this means in practice:
 
 Each failure pattern is tagged with a `cogency_tags` field referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/articles/agent-failure-diagnostics.html). His framework identifies 5 input quality properties (specification layer) + 2 runtime failure categories.
 
-**Important framing:** Rosen's framework diagnoses *input specification quality* — whether the instructions, context, and tools given to the LLM are cogent. Atlas diagnoses *runtime failure symptoms* — what went wrong during execution. These are different layers. The mapping below is a **projection** from Atlas's runtime failures onto Rosen's specification categories, not a 1:1 correspondence.
+**Important framing:** Rosen's framework diagnoses *input specification quality* — whether the instructions, context, and tools given to the LLM are cogent. Atlas diagnoses *runtime failure symptoms* — what went wrong during execution. These are different layers. The mapping below is an **interpretive projection** that links specification failures to their typical runtime manifestations in Atlas, not a 1:1 correspondence.
 
 ```
 Cogency (specification layer) → induces → Atlas failures (runtime layer)
@@ -473,8 +473,8 @@ Cogency (specification layer) → induces → Atlas failures (runtime layer)
 | Cogency Property | Atlas Patterns | Relationship |
 |---|---|---|
 | **Coherence** (internal) | `clarification_failure`, `assumption_invalidation_failure`, `instruction_priority_inversion`, `prompt_injection_via_retrieval`, `conflicting_signals` | Ambiguous or contradictory specs manifest as these runtime failures |
-| **Correctness** | `premature_model_commitment`, `repair_strategy_failure` | Wrong interpretation at runtime, often induced by incorrect specification |
-| **Completeness** | `context_truncation_loss` | Runtime information loss — related but not identical to design-time completeness |
+| **Correctness** | `premature_model_commitment`, `repair_strategy_failure` | Runtime misinterpretation patterns that may be triggered by incorrect specification, but are not direct representations of specification correctness itself |
+| **Completeness** | `context_truncation_loss` | Loosely related but fundamentally distinct: runtime truncation vs design-time incompleteness |
 | **Density** | `semantic_cache_intent_bleeding`, `rag_retrieval_drift` | Signal-to-noise issues at runtime, analogous to density problems in specification |
 | **Tool failure** | `agent_tool_call_loop`, `tool_result_misinterpretation` | Direct runtime correspondence |
 
