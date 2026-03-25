@@ -460,7 +460,7 @@ What this means in practice:
 
 ## Cogency Framework Mapping
 
-Each failure pattern is tagged with a `cogency_tags` field referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/post/a-diagnostic-framework-for-agent-failure). His framework identifies 5 input quality properties + 2 runtime failure categories. This mapping shows which Atlas patterns correspond to which cogency failures — and where gaps remain.
+Each failure pattern is tagged with a `cogency_tags` field referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/articles/agent-failure-diagnostics.html). His framework identifies 5 input quality properties + 2 runtime failure categories. This mapping shows which Atlas patterns correspond to which cogency failures — and where gaps remain.
 
 **Covered:**
 
