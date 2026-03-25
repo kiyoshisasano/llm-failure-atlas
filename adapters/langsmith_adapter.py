@@ -142,6 +142,49 @@ class LangSmithAdapter(BaseAdapter):
 
     # ----- Tier 1: Deterministic -----
 
+    @staticmethod
+    def _extract_generation_texts(gens) -> list:
+        """Extract text from generations in any format.
+
+        Handles:
+          - Sample format: [{"text": "..."}]
+          - Real LangSmith: [[{"message": {"kwargs": {"content": "..."}}}]]
+          - Mixed formats
+        """
+        texts = []
+        for gen in gens:
+            if isinstance(gen, list):
+                # Nested list: [[{...}]]
+                for inner in gen:
+                    if isinstance(inner, dict):
+                        # Try message.kwargs.content first (real LangSmith)
+                        msg = inner.get("message", {})
+                        if isinstance(msg, dict):
+                            kwargs = msg.get("kwargs", {})
+                            if isinstance(kwargs, dict):
+                                content = kwargs.get("content", "")
+                                if content:
+                                    texts.append(content)
+                                    continue
+                        # Fallback to .text
+                        text = inner.get("text", "")
+                        if text:
+                            texts.append(text)
+            elif isinstance(gen, dict):
+                # Flat dict: {"text": "..."}
+                msg = gen.get("message", {})
+                if isinstance(msg, dict):
+                    kwargs = msg.get("kwargs", {})
+                    if isinstance(kwargs, dict):
+                        content = kwargs.get("content", "")
+                        if content:
+                            texts.append(content)
+                            continue
+                text = gen.get("text", "")
+                if text:
+                    texts.append(text)
+        return texts
+
     def _extract_cache(self, normalized: dict) -> dict:
         """Extract cache info from retriever runs."""
         for run in normalized["retriever_runs"]:
@@ -191,8 +234,7 @@ class LangSmithAdapter(BaseAdapter):
         clarification = False
         for run in normalized["llm_runs"]:
             gens = run.get("outputs", {}).get("generations", [])
-            for gen in gens:
-                text = gen.get("text", "")
+            for text in self._extract_generation_texts(gens):
                 if any(m in text.lower() for m in
                        ["could you clarify", "did you mean", "can you specify",
                         "what do you mean", "which one", "please clarify"]):
@@ -218,8 +260,7 @@ class LangSmithAdapter(BaseAdapter):
         if len(llm_runs) >= 2:
             for run in llm_runs[1:]:
                 gens = run.get("outputs", {}).get("generations", [])
-                for gen in gens:
-                    text = gen.get("text", "")
+                for text in self._extract_generation_texts(gens):
                     if any(w in text.lower() for w in
                            ["let me try", "actually", "correction",
                             "different approach", "reconsider"]):
