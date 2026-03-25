@@ -460,27 +460,33 @@ What this means in practice:
 
 ## Cogency Framework Mapping
 
-Each failure pattern is tagged with a `cogency_tags` field referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/articles/agent-failure-diagnostics.html). His framework identifies 5 input quality properties + 2 runtime failure categories. This mapping shows which Atlas patterns correspond to which cogency failures — and where gaps remain.
+Each failure pattern is tagged with a `cogency_tags` field referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/articles/agent-failure-diagnostics.html). His framework identifies 5 input quality properties (specification layer) + 2 runtime failure categories.
 
-**Covered:**
+**Important framing:** Rosen's framework diagnoses *input specification quality* — whether the instructions, context, and tools given to the LLM are cogent. Atlas diagnoses *runtime failure symptoms* — what went wrong during execution. These are different layers. The mapping below is a **projection** from Atlas's runtime failures onto Rosen's specification categories, not a 1:1 correspondence.
 
-| Cogency Property | Atlas Patterns | What it catches |
+```
+Cogency (specification layer) → induces → Atlas failures (runtime layer)
+```
+
+**Projections (Atlas runtime failures that often result from these specification issues):**
+
+| Cogency Property | Atlas Patterns | Relationship |
 |---|---|---|
-| **Coherence** (internal) | `clarification_failure`, `assumption_invalidation_failure`, `instruction_priority_inversion`, `prompt_injection_via_retrieval`, `conflicting_signals` | Contradictory inputs, ambiguity, priority conflicts |
-| **Correctness** | `premature_model_commitment`, `repair_strategy_failure` | Wrong interpretation, wrong repair approach |
-| **Completeness** | `context_truncation_loss` | Missing information due to truncation |
-| **Density** | `semantic_cache_intent_bleeding`, `rag_retrieval_drift` | Signal buried by cache noise or retrieval degradation |
-| **Tool failure** | `agent_tool_call_loop`, `tool_result_misinterpretation` | Runtime tool execution failures |
+| **Coherence** (internal) | `clarification_failure`, `assumption_invalidation_failure`, `instruction_priority_inversion`, `prompt_injection_via_retrieval`, `conflicting_signals` | Ambiguous or contradictory specs manifest as these runtime failures |
+| **Correctness** | `premature_model_commitment`, `repair_strategy_failure` | Wrong interpretation at runtime, often induced by incorrect specification |
+| **Completeness** | `context_truncation_loss` | Runtime information loss — related but not identical to design-time completeness |
+| **Density** | `semantic_cache_intent_bleeding`, `rag_retrieval_drift` | Signal-to-noise issues at runtime, analogous to density problems in specification |
+| **Tool failure** | `agent_tool_call_loop`, `tool_result_misinterpretation` | Direct runtime correspondence |
 
-**Not yet covered (requires domain-specific signals):**
+**Not covered by Atlas (specification-layer gaps):**
 
-| Cogency Property | Why it's hard | What would be needed |
+| Cogency Property | Why Atlas cannot detect it | Nature of the gap |
 |---|---|---|
-| **Coherence** (external/plausibility) | Requires world knowledge to detect implausible data | Domain-specific plausibility checks or LLM-assisted verification |
-| **Sufficiency** | Invisible during execution — output looks correct but misses critical factor | Domain expert review or task-specific completeness criteria |
-| **Density** (direct) | Requires measuring signal-to-noise ratio in context window | Context analysis or attention-based metrics |
+| **Coherence** (external/plausibility) | Requires world knowledge to detect implausible data | Specification-layer issue; Atlas operates on runtime symptoms only |
+| **Sufficiency** | Invisible during execution — output looks correct but misses a critical factor | Fundamental limitation of post-hoc analysis without domain context |
+| **Density** (direct) | Requires measuring signal-to-noise ratio in the context window | Specification-layer measurement; Atlas sees downstream effects, not the cause |
 
-These gaps are structural: they represent the boundary between rule-based detection and domain expertise. They will be addressed as real-world agent logs (e.g., from production literature monitoring or legal analysis systems) provide concrete signal definitions.
+These gaps are structural: they represent the boundary between runtime symptom detection (what Atlas does) and input specification analysis (what Rosen's framework addresses). Closing them would require domain-specific signal definitions or integration with specification-layer tools.
 
 ---
 
