@@ -123,7 +123,7 @@ def main():
     print(f"""
   What happened:
     1. Raw LangChain trace was adapted to matcher format
-    2. Matcher detected {len(diagnosed)} failure(s) from 12 patterns
+    2. Matcher detected {len(diagnosed)} failure(s) from 15 patterns
     3. Debugger identified '{s['root_cause']}' as root cause
     4. Generated {s['fix_count']} fix(es) with gate mode: {s['gate_mode']}
 
