@@ -238,6 +238,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "response": self._build_response(),
             "tools": self._build_tools(),
             "state": self._build_state(),
+            "grounding": self._build_grounding(),
         }
 
     def _build_input(self) -> dict:
@@ -344,6 +345,57 @@ class AtlasCallbackHandler(BaseCallbackHandler):
 
     def _build_response(self) -> dict:
         return {"alignment_score": self._compute_alignment()}
+
+    def _build_grounding(self) -> dict:
+        """Assess evidence grounding quality of the final response.
+
+        This section captures whether the agent had sufficient data to
+        support its answer.  It does NOT trigger any failure pattern
+        today — it enriches telemetry for future Sufficiency analysis.
+
+        Fields:
+          tool_provided_data: True if at least one tool returned usable
+              (non-error, non-empty) output.
+          uncertainty_acknowledged: True if the final response contains
+              explicit language indicating the answer may lack grounding.
+          response_length: character count of final output, useful for
+              detecting confident long answers despite no data.
+        """
+        # Did any tool provide usable data?
+        tool_provided_data = False
+        for c in self._tool_calls:
+            if c.get("error"):
+                continue
+            output = str(c.get("output", "")).lower()
+            if not any(m in output for m in self.TOOL_SOFT_ERROR_MARKERS):
+                tool_provided_data = True
+                break
+
+        # Did the final response acknowledge uncertainty?
+        uncertainty_acknowledged = False
+        if self._final_output:
+            response = self._final_output.lower()
+            uncertainty_markers = [
+                "couldn't find", "could not find",
+                "unable to find", "unable to retrieve",
+                "unable to fetch",
+                "no results", "no relevant results",
+                "did not yield", "did not return",
+                "wasn't able", "was not able",
+                "service unavailable", "service issue",
+                "based on general", "based on historical",
+                "up to my last training",
+                "i don't have", "i do not have",
+            ]
+            uncertainty_acknowledged = any(m in response for m in uncertainty_markers)
+
+        response_length = len(self._final_output) if self._final_output else 0
+
+        return {
+            "tool_provided_data": tool_provided_data,
+            "uncertainty_acknowledged": uncertainty_acknowledged,
+            "response_length": response_length,
+        }
 
     # Markers that indicate a tool returned an error or empty result
     # in its output text (not via on_tool_error callback).
