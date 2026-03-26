@@ -345,24 +345,67 @@ class AtlasCallbackHandler(BaseCallbackHandler):
     def _build_response(self) -> dict:
         return {"alignment_score": self._compute_alignment()}
 
+    # Markers that indicate a tool returned an error or empty result
+    # in its output text (not via on_tool_error callback).
+    TOOL_SOFT_ERROR_MARKERS = [
+        "error", "unavailable", "service unavailable",
+        "could not", "failed to", "exception",
+        "no results", "0 results", "0 matching",
+        "not found", "no data", "no records",
+        "empty", "none found", "[]",
+    ]
+
     def _build_tools(self) -> dict:
         # Count by tool name only — LLM may vary params in a loop
         name_counts = Counter(c["name"] for c in self._tool_calls)
         max_repeat = max(name_counts.values()) if name_counts else 0
         repeat_count = max_repeat - 1 if max_repeat > 1 else 0
+
+        # Hard errors: raised via on_tool_error callback
         error_count = sum(1 for c in self._tool_calls if c.get("error"))
+
+        # Soft errors: tool returned successfully but output text
+        # contains error/empty markers. These are invisible to
+        # on_tool_error but indicate the tool provided no useful data.
+        soft_error_count = 0
+        for c in self._tool_calls:
+            if c.get("error"):
+                continue  # already counted as hard error
+            output = str(c.get("output", "")).lower()
+            if any(m in output for m in self.TOOL_SOFT_ERROR_MARKERS):
+                soft_error_count += 1
 
         return {
             "call_count": len(self._tool_calls),
             "repeat_count": repeat_count,
             "unique_tools": len(name_counts) if name_counts else 0,
             "error_count": error_count,
+            "soft_error_count": soft_error_count,
         }
 
     def _build_state(self) -> dict:
         """Infer state.progress_made from tool results."""
         if not self._tool_calls:
             return {"progress_made": True}
+
+        # Check ALL tool calls (not just repeated ones) for negative results.
+        # A single tool call returning empty/error also means no progress
+        # on the data-gathering front.
+        negative_markers = self.TOOL_SOFT_ERROR_MARKERS
+        negative_count = 0
+        total_with_output = 0
+
+        for c in self._tool_calls:
+            output = str(c.get("output", "")).lower()
+            if not output:
+                continue
+            total_with_output += 1
+            if c.get("error") or any(m in output for m in negative_markers):
+                negative_count += 1
+
+        # If all tool outputs are negative/error, no progress was made
+        if total_with_output > 0 and negative_count == total_with_output:
+            return {"progress_made": False}
 
         # If repeated tool calls all return similar negative results, no progress
         name_counts = Counter(c["name"] for c in self._tool_calls)
@@ -371,8 +414,6 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         if most_called and most_called[1] >= 2:
             tool_name = most_called[0]
             outputs = [c.get("output", "") for c in self._tool_calls if c["name"] == tool_name]
-            # Check if all outputs indicate failure/empty
-            negative_markers = ["no ", "not found", "empty", "error", "none", "[]", "0 results"]
             all_negative = all(
                 any(m in str(o).lower() for m in negative_markers)
                 for o in outputs if o
