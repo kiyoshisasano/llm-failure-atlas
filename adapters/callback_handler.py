@@ -456,6 +456,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         if self._final_output:
             response = self._final_output.lower()
             uncertainty_markers = [
+                # Data absence
                 "couldn't find", "could not find",
                 "unable to find", "unable to retrieve",
                 "unable to fetch",
@@ -463,9 +464,22 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 "did not yield", "did not return",
                 "wasn't able", "was not able",
                 "service unavailable", "service issue",
+                # Grounding qualification
                 "based on general", "based on historical",
                 "up to my last training",
+                "as of my last knowledge",
                 "i don't have", "i do not have",
+                # Data staleness (discovered in grounding precision tests)
+                "may not accurately reflect",
+                "data is outdated", "data is from",
+                "outdated", "not current",
+                "may have changed", "may have shifted",
+                "recommend seeking more recent",
+                "recommend checking the latest",
+                "for the most accurate",
+                # Estimation disclosure
+                "approximately", "estimated",
+                "rough estimate", "general estimate",
             ]
             uncertainty_acknowledged = any(m in response for m in uncertainty_markers)
 
