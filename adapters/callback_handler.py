@@ -110,15 +110,25 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 for gen in gen_list:
                     text += gen.text if hasattr(gen, "text") else str(gen)
 
+        # Extract token usage if available
+        token_usage = {}
+        if hasattr(response, "llm_output") and isinstance(response.llm_output, dict):
+            token_usage = response.llm_output.get("token_usage", {})
+
         if self._llm_calls and self._llm_calls[-1]["type"] == "start":
             self._llm_calls[-1]["type"] = "complete"
             self._llm_calls[-1]["output"] = text
+            if token_usage:
+                self._llm_calls[-1]["token_usage"] = token_usage
         else:
-            self._llm_calls.append({
+            entry = {
                 "type": "complete",
                 "output": text,
                 "time": datetime.now().isoformat(),
-            })
+            }
+            if token_usage:
+                entry["token_usage"] = token_usage
+            self._llm_calls.append(entry)
 
     def on_llm_error(self, error, **kwargs):
         self._llm_calls.append({
@@ -239,6 +249,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "tools": self._build_tools(),
             "state": self._build_state(),
             "grounding": self._build_grounding(),
+            "context": self._build_context(),
         }
 
     def _build_input(self) -> dict:
@@ -338,10 +349,79 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                     }
         return {"hit": False, "similarity": 0.0, "query_intent_similarity": 1.0}
 
+    # Adversarial patterns in retrieved content that may override
+    # system or task instructions (prompt injection via retrieval).
+    ADVERSARIAL_PATTERNS = [
+        "ignore previous instructions",
+        "ignore all previous",
+        "ignore the above",
+        "disregard previous",
+        "disregard all previous",
+        "forget your instructions",
+        "new instructions:",
+        "instead, do the following",
+        "override:",
+        "system prompt:",
+        "you are now",
+        "act as",
+        "do not follow",
+        "stop being",
+    ]
+
     def _build_retrieval(self) -> dict:
+        """Build retrieval telemetry from retriever events.
+
+        When retriever events are present, scans retrieved documents for
+        adversarial injection patterns and computes coverage heuristic.
+        These fields feed prompt_injection_via_retrieval and
+        context_truncation_loss patterns.
+        """
         if not self._retriever_results:
             return {"skipped": True}
-        return {"skipped": False}
+
+        # Scan all retrieved documents for adversarial patterns
+        contains_instruction = False
+        adversarial_matches = 0
+        total_docs = 0
+
+        for ret in self._retriever_results:
+            for doc in ret.get("documents", []):
+                total_docs += 1
+                content = doc.get("content", "").lower()
+                for pattern in self.ADVERSARIAL_PATTERNS:
+                    if pattern in content:
+                        contains_instruction = True
+                        adversarial_matches += 1
+                        break  # one match per doc is enough
+
+        adversarial_score = (
+            adversarial_matches / total_docs if total_docs > 0 else 0.0
+        )
+
+        # override_detected: adversarial content found AND the response
+        # diverges from what we'd expect.  Full compliance check requires
+        # instruction_priority_inversion (not yet observable), so we use
+        # a conservative proxy: adversarial content exists.
+        override_detected = contains_instruction
+
+        # Expected coverage heuristic: fraction of retriever queries
+        # that returned at least one document.
+        queries_with_results = sum(
+            1 for ret in self._retriever_results
+            if ret.get("documents")
+        )
+        expected_coverage = (
+            queries_with_results / len(self._retriever_results)
+            if self._retriever_results else 0.0
+        )
+
+        return {
+            "skipped": False,
+            "contains_instruction": contains_instruction,
+            "override_detected": override_detected,
+            "adversarial_score": round(adversarial_score, 2),
+            "expected_coverage": round(expected_coverage, 2),
+        }
 
     def _build_response(self) -> dict:
         return {"alignment_score": self._compute_alignment()}
@@ -395,6 +475,67 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "tool_provided_data": tool_provided_data,
             "uncertainty_acknowledged": uncertainty_acknowledged,
             "response_length": response_length,
+        }
+
+    # Known model context window sizes (tokens).
+    # Used for truncation heuristic — conservative estimates.
+    MODEL_CONTEXT_LIMITS = {
+        "gpt-4o-mini": 128000,
+        "gpt-4o": 128000,
+        "gpt-4": 8192,
+        "gpt-4-turbo": 128000,
+        "gpt-3.5-turbo": 16385,
+    }
+    # Fraction of context window used → consider truncation risk
+    TRUNCATION_THRESHOLD = 0.85
+
+    def _build_context(self) -> dict:
+        """Estimate context truncation risk from token usage.
+
+        Uses token_usage from LLM response metadata (when available)
+        to detect if input tokens approach the model's context window.
+        This is a heuristic — actual truncation happens inside the
+        LLM and is not directly observable from callbacks.
+
+        Fields:
+          truncated: True if input tokens exceed TRUNCATION_THRESHOLD
+              of the model's context window.
+          critical_info_present: Always False (requires domain knowledge,
+              not deterministically inferable from callback data).
+          max_input_tokens: highest input token count observed.
+          context_utilization: max_input_tokens / model_limit.
+        """
+        max_input_tokens = 0
+        model_name = ""
+
+        for call in self._llm_calls:
+            usage = call.get("token_usage", {})
+            input_tokens = usage.get("prompt_tokens", 0)
+            if input_tokens > max_input_tokens:
+                max_input_tokens = input_tokens
+            if not model_name:
+                model_name = call.get("model", "")
+
+        # Find context limit for this model
+        context_limit = None
+        model_lower = model_name.lower()
+        for name, limit in self.MODEL_CONTEXT_LIMITS.items():
+            if name in model_lower:
+                context_limit = limit
+                break
+
+        if context_limit and max_input_tokens > 0:
+            utilization = max_input_tokens / context_limit
+            truncated = utilization >= self.TRUNCATION_THRESHOLD
+        else:
+            utilization = 0.0
+            truncated = False
+
+        return {
+            "truncated": truncated,
+            "critical_info_present": False,  # not inferable
+            "max_input_tokens": max_input_tokens,
+            "context_utilization": round(utilization, 4),
         }
 
     # Markers that indicate a tool returned an error or empty result
