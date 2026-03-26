@@ -177,13 +177,16 @@ def diagnose(pattern: dict, signals: dict,
     def _effective_add(sig_name: str, base_add: float) -> float:
         """Apply observed decay if observation_quality is available.
 
-        If sig_name is absent from observation_quality, default to
-        observed=True (no decay). This keeps the function safe when
-        observation_quality is partial or externally constructed.
+        When observation_quality is None (legacy callers), no decay is
+        applied. When observation_quality is provided but sig_name is
+        absent, the signal is treated as unobserved (decay applied).
+        Unknown observation status is not promoted to observed.
         """
         if observation_quality is not None:
-            sig_q = observation_quality.get(sig_name, {})
-            if not sig_q.get("observed", True):
+            sig_q = observation_quality.get(sig_name)
+            # None  → key missing, treat as unobserved
+            # {}    → malformed, treat as unobserved
+            if sig_q is None or not sig_q.get("observed", False):
                 return base_add * UNOBSERVED_DECAY
         return base_add
 
