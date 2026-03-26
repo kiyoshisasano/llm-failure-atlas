@@ -86,6 +86,13 @@ def extract_signals(pattern: dict, log: dict) -> tuple:
         (signals_output, observation_quality) where:
           signals_output: dict of signal_name → bool (backward-compatible)
           observation_quality: dict of signal_name → {"observed": bool, "missing": bool}
+
+    observation_quality semantics:
+      observed=True:  all source fields existed and the rule was evaluated normally.
+      observed=False: one or more source fields were absent (missing=True).
+                      The signal value falls back to missing_field_default (currently
+                      always False across all 15 patterns). Future adapters may also
+                      set observed=False to indicate heuristic-inferred values.
     """
     evaluation = pattern["signal_extraction"].get("evaluation", {})
     missing_field_default = evaluation.get("missing_field", False)
@@ -168,7 +175,12 @@ def diagnose(pattern: dict, signals: dict,
     applied_modifiers = []
 
     def _effective_add(sig_name: str, base_add: float) -> float:
-        """Apply observed decay if observation_quality is available."""
+        """Apply observed decay if observation_quality is available.
+
+        If sig_name is absent from observation_quality, default to
+        observed=True (no decay). This keeps the function safe when
+        observation_quality is partial or externally constructed.
+        """
         if observation_quality is not None:
             sig_q = observation_quality.get(sig_name, {})
             if not sig_q.get("observed", True):
