@@ -197,3 +197,57 @@ Apply the retrieval filter guard patch. Gate mode is `staged_review` (safety=med
 | Thin grounding | Risk | Monitor | `expansion_ratio > 5` + `uncertainty_acknowledged=False` |
 | Irrelevant data | Risk (gap) | Monitor | Not detectable with current telemetry |
 | Prompt injection | Failure | Fix | `adversarial_score >= 0.7` |
+
+---
+
+## How to Read Combined Signals
+
+Atlas may report multiple signals simultaneously. A diagnosed failure, a grounding risk indicator, and normal telemetry can all appear in the same output. Here is how to interpret them.
+
+### What to look at first
+
+Start with diagnosed failures. If Atlas reports `agent_tool_call_loop` or `prompt_injection_via_retrieval`, that is the primary issue. Address it before examining grounding signals.
+
+If no failure is diagnosed, look at the grounding section. `tool_provided_data`, `uncertainty_acknowledged`, and `expansion_ratio` together tell you whether the agent's response is well-supported.
+
+If both grounding fields are clean (`tool_provided_data=True`, `uncertainty_acknowledged` not relevant), the output is likely acceptable. You can move on.
+
+### When failure and risk appear together
+
+A diagnosed failure takes priority for action. The risk indicators provide context for understanding *why* the failure is severe.
+
+**Example: tool loop + grounding issues.** The agent called a tool 4 times, all returned errors (`agent_tool_call_loop` diagnosed). After the loop, it answered from training data (`tool_provided_data=False`, `uncertainty_acknowledged=True`). The failure (loop) is what to fix. The grounding signals tell you the agent recovered gracefully after the loop — it did not hallucinate. This means the fix priority is the loop behavior, not the output quality.
+
+If the same scenario had `uncertainty_acknowledged=False`, the situation is worse: the agent looped AND produced ungrounded output without disclosure. Both the loop fix and a grounding review are warranted.
+
+### When multiple risks appear without failure
+
+No diagnosed failure does not mean everything is fine. Multiple risk signals together can indicate a systemic issue.
+
+**Example: thin grounding without failure.** `tool_provided_data=True`, `expansion_ratio=12`, `uncertainty_acknowledged=False`. No failure fires because the tool did return data. But the agent expanded thin evidence into a detailed response without disclosure. If this pattern repeats across multiple runs, it suggests the agent's system prompt needs a grounding instruction: "If your answer includes information beyond what the tools returned, label it as supplemental."
+
+This is not something to fix in Atlas. It is something to fix in your agent's prompt.
+
+### The edge case: no data vs supplementation
+
+These two situations look similar but are fundamentally different:
+
+**No data (acceptable):** `tool_provided_data=False`, `uncertainty_acknowledged=True`, short response. The agent said "I couldn't find data" and stopped or gave a brief caveat. This is correct behavior.
+
+**Supplementation without disclosure:** `tool_provided_data=False`, `uncertainty_acknowledged=True`, `expansion_ratio > 5` (if computed against a near-zero source). The agent acknowledged the gap but then wrote a long response anyway, drawing from training data. The disclosure is present ("I couldn't find specific data, however..."), but the volume of supplemented content may give users false confidence in the answer's grounding.
+
+The difference is in response length relative to available evidence. A one-line caveat followed by a 500-word answer is structurally different from a one-line caveat followed by a one-line suggestion. Both have `uncertainty_acknowledged=True`, but the risk profile is different. Use `expansion_ratio` to distinguish them.
+
+### What can be safely ignored
+
+- `alignment_score` in isolation — it measures word overlap, not semantic correctness
+- `grounding.response_length` in isolation — long responses are not inherently problematic
+- `context.truncated=False` — means context window was not exhausted, which is the normal case
+- Single-run anomalies — one unusual `expansion_ratio` is not a pattern; look for consistency across runs
+
+### What indicates a systemic issue
+
+- The same failure appearing across multiple runs with different inputs
+- `expansion_ratio` consistently above 5 with `uncertainty_acknowledged=False`
+- `soft_error_count` consistently high — suggests the tool itself is unreliable
+- `tool_provided_data=False` on most runs — suggests tool integration problems, not agent problems
