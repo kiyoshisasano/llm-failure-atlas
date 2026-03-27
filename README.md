@@ -31,7 +31,7 @@ python quickstart_demo.py
 
 ## How to Use
 
-### Option 1: watch() wrapper (recommended for LangGraph)
+Add one line to your LangGraph agent:
 
 ```python
 from adapters.callback_handler import watch
@@ -40,37 +40,17 @@ graph = watch(workflow.compile(), auto_diagnose=True, auto_pipeline=True)
 result = graph.invoke({"messages": [HumanMessage(content="...")]})
 ```
 
-The original graph behavior is unchanged. Atlas observes execution and prints diagnosis on completion.
+The original graph behavior is unchanged. Atlas observes execution and prints diagnosis on completion. Requires `pip install langchain-core`. Core pipeline requires only `pyyaml`.
 
-### Option 2: Callback handler (any LangChain/LangGraph agent)
+**Other integration options:**
 
-```python
-from adapters.callback_handler import AtlasCallbackHandler
+| Method | Use when | Code |
+|---|---|---|
+| Callback handler | Any LangChain/LangGraph agent | `config={"callbacks": [AtlasCallbackHandler(auto_diagnose=True)]}` |
+| CrewAI listener | CrewAI crews | `AtlasCrewListener(auto_diagnose=True)` — auto-registers on event bus |
+| Batch adapter | Post-hoc analysis from JSON exports | `LangChainAdapter().build_matcher_input(raw_trace)` |
 
-handler = AtlasCallbackHandler(auto_diagnose=True)
-agent.invoke({"input": "..."}, config={"callbacks": [handler]})
-```
-
-### Option 3: CrewAI
-
-```python
-from adapters.crewai_adapter import AtlasCrewListener
-
-listener = AtlasCrewListener(auto_diagnose=True)
-crew = Crew(agents=[...], tasks=[...])
-crew.kickoff()
-```
-
-### Option 4: Batch (JSON export)
-
-```python
-from adapters.langchain_adapter import LangChainAdapter
-
-adapter = LangChainAdapter()
-matcher_input = adapter.build_matcher_input(raw_trace)
-```
-
-Requires `pip install langchain-core` for callback/watch. Core pipeline requires only `pyyaml`.
+See `adapters/` for full examples of each method.
 
 ---
 
