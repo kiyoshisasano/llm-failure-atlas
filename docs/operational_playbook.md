@@ -69,7 +69,7 @@ grounding.uncertainty_acknowledged == True
 
 The agent had no data and said so. This is correct behavior. No failure should fire.
 
-**Escalation rule:** Escalate to "risk" if `expansion_ratio > 5` — the agent acknowledged the gap but still produced a long response, suggesting supplementation from training data.
+**Escalation rule:** Escalate to "risk" if the agent acknowledged the gap but still produced a long response. In this case `source_data_length` is zero or near-zero, so `expansion_ratio` is not meaningful — instead, check `response_length > 500` with `uncertainty_acknowledged=True` as the indicator. A one-line caveat followed by a lengthy answer suggests the agent supplemented from training data despite disclosing the gap.
 
 **Confidence requirements:**
 
