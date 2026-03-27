@@ -799,7 +799,10 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 sys.path.insert(0, str(debugger_root))
 
             from pipeline import run_pipeline
-            result = run_pipeline(diagnosed, use_learning=True, top_k=1)
+            result = run_pipeline(
+                diagnosed, use_learning=True, top_k=1,
+                include_explanation=True,
+            )
             self.last_pipeline_result = result
             s = result["summary"]
 
@@ -808,6 +811,19 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 print(f"  Failures:    {s['failure_count']}")
                 print(f"  Fixes:       {s['fix_count']}")
                 print(f"  Gate:        {s['gate_mode']} (score={s['gate_score']})")
+
+                expl = result.get("explanation")
+                if expl:
+                    print(f"\n  Explanation:")
+                    if expl.get("context_summary"):
+                        print(f"    Context: {expl['context_summary']}")
+                    if expl.get("interpretation"):
+                        print(f"    Interpretation: {expl['interpretation']}")
+                    risk = expl.get("risk", {})
+                    if risk:
+                        print(f"    Risk: {risk.get('level', '-').upper()}")
+                    if expl.get("recommendation"):
+                        print(f"    Action: {expl['recommendation']}")
 
         except ImportError as e:
             if self.verbose:
