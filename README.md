@@ -113,12 +113,43 @@ LangGraphics-style `watch()` wrapper for LangGraph:
 ```python
 from adapters.callback_handler import watch
 
-graph = watch(workflow.compile(), auto_diagnose=True)
-await graph.ainvoke({"messages": [...]})
-# → diagnosis runs automatically, original behavior unchanged
+graph = watch(workflow.compile(), auto_diagnose=True, auto_pipeline=True)
+result = graph.invoke({"messages": [...]})
+# → diagnosis + root cause + explanation printed automatically
 ```
 
+With `auto_pipeline=True`, watch() runs the full pipeline on completion: matcher → debugger → explanation. The output includes root cause identification, risk assessment, and recommended action.
+
 Requires `pip install langchain-core`. The core atlas/debugger pipeline still requires only `pyyaml`.
+
+### Understanding the Output
+
+When Atlas detects a failure, the output looks like this:
+
+```
+Root cause:  agent_tool_call_loop (conf=0.55)
+Failures:    1
+Gate:        proposal_only (score=0.0)
+
+Explanation:
+  Context: Root cause identified: the agent repeatedly invoked tools
+           without making meaningful state progress (confidence: 0.55).
+  Interpretation: The failure originated because the agent repeatedly
+                  invoked tools without making meaningful state progress.
+  Risk: MEDIUM
+  Action: Review the proposed fix before applying.
+```
+
+When no failure is detected but grounding signals indicate a risk:
+
+```
+Failures:   none detected
+Grounding:  tool_provided_data=False  uncertainty_acknowledged=True
+```
+
+This means the agent had no data but disclosed the gap — acceptable behavior.
+
+For detailed walkthroughs of real-world cases, see [Applied Debugging Examples](docs/applied_debugging_examples.md). It covers 5 scenarios: correct handling of missing data, thin grounding, tool loops, irrelevant data usage, and prompt injection detection.
 
 ### CrewAI (event listener)
 
