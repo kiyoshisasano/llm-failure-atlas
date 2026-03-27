@@ -438,18 +438,23 @@ class AtlasCallbackHandler(BaseCallbackHandler):
               (non-error, non-empty) output.
           uncertainty_acknowledged: True if the final response contains
               explicit language indicating the answer may lack grounding.
-          response_length: character count of final output, useful for
-              detecting confident long answers despite no data.
+          response_length: character count of final output.
+          source_data_length: total character count of usable tool outputs.
+          expansion_ratio: response_length / source_data_length.
+              High ratio (>5) with uncertainty_acknowledged=False
+              indicates the LLM supplemented thin evidence without
+              disclosure ("thin grounding" pattern).
         """
         # Did any tool provide usable data?
         tool_provided_data = False
+        source_data_length = 0
         for c in self._tool_calls:
             if c.get("error"):
                 continue
-            output = str(c.get("output", "")).lower()
-            if not any(m in output for m in self.TOOL_SOFT_ERROR_MARKERS):
+            output_str = str(c.get("output", ""))
+            if not any(m in output_str.lower() for m in self.TOOL_SOFT_ERROR_MARKERS):
                 tool_provided_data = True
-                break
+                source_data_length += len(output_str)
 
         # Did the final response acknowledge uncertainty?
         uncertainty_acknowledged = False
@@ -485,10 +490,18 @@ class AtlasCallbackHandler(BaseCallbackHandler):
 
         response_length = len(self._final_output) if self._final_output else 0
 
+        # Expansion ratio: how much the response expands beyond source data
+        if source_data_length > 0:
+            expansion_ratio = round(response_length / source_data_length, 2)
+        else:
+            expansion_ratio = 0.0 if response_length == 0 else float("inf")
+
         return {
             "tool_provided_data": tool_provided_data,
             "uncertainty_acknowledged": uncertainty_acknowledged,
             "response_length": response_length,
+            "source_data_length": source_data_length,
+            "expansion_ratio": expansion_ratio,
         }
 
     # Known model context window sizes (tokens).
