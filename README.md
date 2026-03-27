@@ -151,6 +151,8 @@ This means the agent had no data but disclosed the gap — acceptable behavior.
 
 For detailed walkthroughs of real-world cases, see [Applied Debugging Examples](docs/applied_debugging_examples.md). It covers 5 scenarios: correct handling of missing data, thin grounding, tool loops, irrelevant data usage, and prompt injection detection.
 
+For production decision rules (when to fix, monitor, or ignore), see [Operational Playbook](docs/operational_playbook.md).
+
 ### CrewAI (event listener)
 
 ```python
