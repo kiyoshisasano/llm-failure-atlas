@@ -150,6 +150,8 @@ The callback handler infers telemetry fields not directly observable from agent 
 | `response.alignment_score` | Word overlap - topic mismatch penalty - negation penalty |
 | `state.progress_made` | All tool outputs contain negative/error markers |
 | `tools.soft_error_count` | Tool output text contains error/empty markers |
+| `tools.error_count` | Tool-level exceptions (HTTP errors, timeouts, MCP failures) |
+| `tools.hard_error_detected` | True if any tool raised an exception (vs returning empty) |
 | `grounding.tool_provided_data` | At least one tool returned non-error output |
 | `grounding.uncertainty_acknowledged` | Response contains staleness/uncertainty language |
 | `grounding.source_data_length` | Total character count of usable tool outputs |
