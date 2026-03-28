@@ -49,6 +49,7 @@ The original graph behavior is unchanged. Atlas observes execution and prints di
 | Callback handler | Any LangChain/LangGraph agent | `config={"callbacks": [AtlasCallbackHandler(auto_diagnose=True)]}` |
 | CrewAI listener | CrewAI crews | `AtlasCrewListener(auto_diagnose=True)` — auto-registers on event bus |
 | Batch adapter | Post-hoc analysis from JSON exports | `LangChainAdapter().build_matcher_input(raw_trace)` |
+| Redis demo | Redis RAG + Semantic Cache responses | `RedisDemoAdapter().build_matcher_input(api_response)` |
 
 See `adapters/` for full examples of each method.
 
@@ -116,6 +117,8 @@ For real-world walkthroughs, see [Applied Debugging Examples](docs/applied_debug
 
 ## Causal Graph
 
+You don't need to memorize this graph. The tool traverses it for you and reports the root cause automatically.
+
 ```mermaid
 graph TD
     CF[clarification_failure] --> AIF[assumption_invalidation_failure]
@@ -169,6 +172,10 @@ Verified with real LangGraph agents (OpenAI API).
 | Ambiguous cancel | `clarification_failure` | 0.7 |
 
 Additional: 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PASS), watch() verification (3/3 PASS).
+
+**Redis Semantic Cache experiment:**
+
+Tested with a Redis RAG + Semantic Cache demo (8 seed/probe pairs). Observed a case where a cached response from one query was returned for a different-intent query, confirmed by answer_hash comparison. The current `semantic_cache_intent_bleeding` signal did not trigger in this case, suggesting that similarity-based signals may not fully capture cache reuse appropriateness in all situations. Further data collection is ongoing. See [SCIB Observation Results](docs/deep_analysis/scib_observation_results.md) for details.
 
 ---
 
@@ -252,6 +259,11 @@ llm-failure-atlas/
     applied_debugging_examples.md  # 5 real-world cases
     operational_playbook.md        # production decision framework
   examples/                        # 10 reproducible test cases
+  docs/
+    applied_debugging_examples.md  # 5 real-world cases
+    operational_playbook.md        # production decision framework
+    deep_analysis/                 # exploration results
+  experiments/                     # observation data collection scripts
   evaluation/                      # metrics + evaluation runner
   validation/                      # 30 scenarios + annotations
   learning/                        # suggestion-only learning store
