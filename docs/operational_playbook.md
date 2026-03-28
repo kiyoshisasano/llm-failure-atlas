@@ -187,6 +187,79 @@ Apply the retrieval filter guard patch. Gate mode is `staged_review` (safety=med
 
 ---
 
+## Pattern: Cache Hit (Normal Reuse)
+
+**Detection condition:**
+
+```
+cache.hit == True
+cache.similarity close to 1.0
+```
+
+**Classification:** Acceptable
+
+**Required action:** Ignore
+
+When a semantically similar query has been asked before, the cache returns the previous response. `tool_provided_data=False` and `sources=[]` are expected in this case — the cache bypasses retrieval by design.
+
+**Escalation rule:** Escalate to "risk" if cache similarity is notably below 1.0 and the cached response does not match the new query's intent. This indicates potential cache intent mismatch (see next pattern).
+
+**Confidence requirements:**
+
+- `cache.hit` is directly reported by the cache layer (reliable)
+- `cache.similarity` is provided by the cache layer (reliable)
+- Intent match between queries cannot be assessed by Atlas with current heuristics
+
+---
+
+## Pattern: Cache Reuse with Different Follow-up Query
+
+**Detection condition:**
+
+```
+cache.hit == True
+(cached response does not match current query intent)
+```
+
+**Classification:** Risk (observation gap)
+
+**Required action:** Monitor
+
+This pattern was observed in Redis semantic cache testing: a query about refunds received a cached response about cancellations. The answer_hash confirmed the cached response was returned verbatim. Atlas's `semantic_cache_intent_bleeding` signal did not trigger in the observed case.
+
+**Escalation rule:** N/A — this requires additional observation data. The similarity gap between valid cache reuse and inappropriate reuse is narrow in observed cases.
+
+**Confidence requirements:**
+
+- Cannot be reliably detected with current similarity-based signals alone
+- Confirmed via answer_hash comparison in controlled experiments
+- More seed/probe pairs needed before defining detection criteria
+
+---
+
+## Pattern: Guardrail Blocked Query
+
+**Detection condition:**
+
+```
+blocked == True (from application-level guardrails)
+```
+
+**Classification:** Acceptable (application-level control)
+
+**Required action:** Ignore
+
+Some applications implement guardrails that block off-topic queries before they reach the RAG pipeline. This produces `tool_provided_data=False` and `sources=[]`, but is not a failure — it is intentional filtering. The adapter marks these with `meta.blocked_by_guardrail=True`.
+
+**Escalation rule:** N/A — this is application behavior, not an Atlas concern.
+
+**Confidence requirements:**
+
+- Requires the application to report `blocked` in its response
+- Not all applications expose this field
+
+---
+
 ## Quick Reference
 
 | Pattern | Classification | Action | Key Signal |
@@ -197,6 +270,9 @@ Apply the retrieval filter guard patch. Gate mode is `staged_review` (safety=med
 | Thin grounding | Risk | Monitor | `expansion_ratio > 5` + `uncertainty_acknowledged=False` |
 | Irrelevant data | Risk (gap) | Monitor | Not detectable with current telemetry |
 | Prompt injection | Failure | Fix | `adversarial_score >= 0.7` |
+| Cache hit (normal) | Acceptable | Ignore | `cache.hit=True` + high similarity |
+| Cache reuse (different query) | Risk (gap) | Monitor | Not reliably detectable yet |
+| Guardrail blocked | Acceptable | Ignore | `blocked=True` |
 
 ---
 

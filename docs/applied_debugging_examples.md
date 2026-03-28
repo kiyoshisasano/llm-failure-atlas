@@ -203,3 +203,85 @@ This is a real security concern. Retrieved content should be scanned for instruc
 Apply the retrieval filter guard patch. This is a `guard_patch` with `safety=medium`, so it requires human review before application (staged_review gate mode).
 
 Note: this detection was verified via observation logic tests (25/25 PASS) with injected retriever state. Production testing with a live RAG pipeline is pending.
+
+---
+
+## Case: RAG with healthy grounding
+
+### Problem
+
+A help center bot uses RAG to retrieve articles and generate responses. The operator needs to verify that the bot is actually grounding its answers in retrieved content, not supplementing from training data.
+
+### Raw Behavior
+
+**Input:** "Payment was declined"
+
+**Tool output (RAG retrieval):** 3 help articles totaling 1,266 characters, including billing troubleshooting steps.
+
+**Agent output:** 698-character response listing specific steps from the retrieved articles.
+
+### Diagnosis (Atlas)
+
+```
+Failures:       none detected
+Grounding:
+  tool_provided_data:       True
+  uncertainty_acknowledged: False
+  source_data_length:       1266
+  response_length:          698
+  expansion_ratio:          0.55
+```
+
+### Interpretation
+
+expansion_ratio=0.55 means the response is shorter than the source data. The agent condensed the retrieved articles into a focused answer. This is healthy grounding — the answer does not exceed the evidence. Verified across 5 different queries with expansion_ratio consistently between 0.44 and 0.84, all below 1.0.
+
+### What this means
+
+This is correct RAG behavior. The agent retrieved relevant data and produced a response grounded in that data without significant supplementation.
+
+### Action
+
+No fix needed. The expansion_ratio < 1.0 pattern is a positive indicator for RAG quality.
+
+---
+
+## Case: Cache reuse with a different follow-up query
+
+### Problem
+
+A user asks "How do I cancel my subscription?" but receives a response about refunds. The system uses a semantic cache that matched this query to a previous question about refunds.
+
+### Raw Behavior
+
+**Previous query (cached):** "I want a refund for my subscription" → response about refund process
+
+**Current query:** "How do I cancel my subscription?" → cache hit, returns the refund response verbatim
+
+**Same query without cache:** "How do I cancel my subscription?" → fresh RAG response with cancellation steps
+
+### Diagnosis (Atlas)
+
+```
+Failures:       none detected
+Cache:
+  hit:          True
+  similarity:   (above SCIB signal threshold)
+Grounding:
+  tool_provided_data:       False
+  sources_count:            0
+```
+
+### Interpretation
+
+The semantic cache judged "refund" and "cancel" as sufficiently similar to serve a cached response. The answer_hash confirmed the cached response was identical to the original refund answer. When the same question was run without cache, fresh RAG retrieval produced a correct cancellation-specific response.
+
+Atlas's `semantic_cache_intent_bleeding` signal did not trigger because the cache similarity was above the signal's detection range. This is a known observation gap — similarity alone may not fully capture whether cache reuse is appropriate when queries share the same domain but differ in their specific request.
+
+### What this means
+
+This is a cache configuration issue, not an agent failure. The cache's similarity threshold is too permissive for queries in the same domain. Atlas can observe that the cache was used (`cache.hit=True`) and that no retrieval occurred, but cannot currently determine whether the cached response matches the new query's intent.
+
+### Action
+
+Consider tightening the semantic cache's distance threshold in the application. Monitor cache reuse patterns using the observation logger (`experiments/experiment_scib_observation.py`). Atlas provides the telemetry to identify when cache hits occur without retrieval, but intent mismatch detection requires additional signals beyond similarity.
