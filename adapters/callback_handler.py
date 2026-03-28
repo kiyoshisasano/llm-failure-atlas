@@ -581,7 +581,9 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         max_repeat = max(name_counts.values()) if name_counts else 0
         repeat_count = max_repeat - 1 if max_repeat > 1 else 0
 
-        # Hard errors: raised via on_tool_error callback
+        # Hard errors: raised via on_tool_error callback.
+        # These represent tool-level failures (HTTP 4xx/5xx, timeouts,
+        # MCP connectivity, exceptions) — not soft empty results.
         error_count = sum(1 for c in self._tool_calls if c.get("error"))
 
         # Soft errors: tool returned successfully but output text
@@ -601,6 +603,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "unique_tools": len(name_counts) if name_counts else 0,
             "error_count": error_count,
             "soft_error_count": soft_error_count,
+            "hard_error_detected": error_count > 0,
         }
 
     def _build_state(self) -> dict:
