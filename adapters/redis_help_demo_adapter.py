@@ -1,18 +1,25 @@
 """
-redis_demo_adapter.py
+redis_help_demo_adapter.py
 
-Adapter for Redis RAG + Semantic Cache demo responses.
+Adapter for the Redis movie-recommender-rag-semantic-cache-workshop
+Help Center endpoint (/api/help/chat).
 
-Converts Redis demo API output into Atlas matcher input format.
-Designed for the movie-recommender-rag-semantic-cache workshop.
+This adapter is specific to the workshop demo's response format.
+It is NOT a general-purpose Redis adapter. Other Redis applications
+will have different response structures and require their own adapters.
+
+Converts the /api/help/chat response into Atlas matcher input format.
+
+Workshop repository:
+    https://github.com/redis-developer/movie-recommender-rag-semantic-cache-workshop
 
 Usage:
-    from adapters.redis_demo_adapter import RedisDemoAdapter
+    from adapters.redis_help_demo_adapter import RedisHelpDemoAdapter
 
-    adapter = RedisDemoAdapter()
-    matcher_input = adapter.build_matcher_input(raw_response)
+    adapter = RedisHelpDemoAdapter()
+    matcher_input = adapter.build_matcher_input(api_response)
 
-Input format (from Redis demo API):
+Input format (from /api/help/chat):
     {
         "answer": str,
         "sources": [{"content": str, "similarity": float, ...}, ...],
@@ -41,10 +48,14 @@ UNCERTAINTY_MARKERS = [
 ]
 
 
-class RedisDemoAdapter(BaseAdapter):
-    """Adapter for Redis demo RAG + Semantic Cache responses."""
+class RedisHelpDemoAdapter(BaseAdapter):
+    """Adapter for the Redis workshop Help Center (/api/help/chat) responses.
 
-    source = "redis_demo"
+    Specific to: movie-recommender-rag-semantic-cache-workshop.
+    Not a general-purpose Redis adapter.
+    """
+
+    source = "redis_help_demo"
 
     def normalize(self, raw_log: dict) -> dict:
         """Pass through — Redis demo response is already structured."""
@@ -181,8 +192,8 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python redis_demo_adapter.py <response.json>")
-        print("       python redis_demo_adapter.py -  (read from stdin)")
+        print("Usage: python redis_help_demo_adapter.py <response.json>")
+        print("       python redis_help_demo_adapter.py -  (read from stdin)")
         sys.exit(1)
 
     if sys.argv[1] == "-":
@@ -191,6 +202,6 @@ if __name__ == "__main__":
         with open(sys.argv[1], encoding="utf-8") as f:
             raw = json.load(f)
 
-    adapter = RedisDemoAdapter()
+    adapter = RedisHelpDemoAdapter()
     result = adapter.build_matcher_input(raw)
     print(json.dumps(result, indent=2))

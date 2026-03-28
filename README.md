@@ -49,7 +49,7 @@ The original graph behavior is unchanged. Atlas observes execution and prints di
 | Callback handler | Any LangChain/LangGraph agent | `config={"callbacks": [AtlasCallbackHandler(auto_diagnose=True)]}` |
 | CrewAI listener | CrewAI crews | `AtlasCrewListener(auto_diagnose=True)` — auto-registers on event bus |
 | Batch adapter | Post-hoc analysis from JSON exports | `LangChainAdapter().build_matcher_input(raw_trace)` |
-| Redis demo | Redis RAG + Semantic Cache responses | `RedisDemoAdapter().build_matcher_input(api_response)` |
+| Redis help demo | [Redis workshop](https://github.com/redis-developer/movie-recommender-rag-semantic-cache-workshop) /api/help/chat | `RedisHelpDemoAdapter().build_matcher_input(response)` |
 
 See `adapters/` for full examples of each method.
 

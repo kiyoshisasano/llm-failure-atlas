@@ -19,10 +19,10 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from adapters.redis_demo_adapter import RedisDemoAdapter
+from adapters.redis_help_demo_adapter import RedisHelpDemoAdapter
 
 API_URL = "http://localhost:8000/api/help/chat"
-adapter = RedisDemoAdapter()
+adapter = RedisHelpDemoAdapter()
 
 
 def run_query(query: str, use_cache: bool = True) -> dict:
