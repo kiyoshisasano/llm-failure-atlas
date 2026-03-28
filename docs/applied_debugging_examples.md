@@ -121,6 +121,10 @@ This is a real failure. The agent wasted 4 API calls on a broken tool instead of
 
 Apply the recommended fix: limit consecutive tool calls and require progress between retries. The auto-apply gate scored this as `proposal_only` because the fix type is `workflow_patch` (hard blocker).
 
+### After (expected with fix applied)
+
+With `max_repeat_calls: 3` and `require_progress_between_calls: True`, the agent would stop after the first or second failed tool call instead of retrying 4 times. It would then respond to the user based on whatever data it has (or acknowledge the tool is unavailable). The 4 wasted API calls are reduced to 1-2, and the user gets a response faster.
+
 ---
 
 ## Case: Irrelevant data used as grounding
@@ -201,6 +205,10 @@ This is a real security concern. Retrieved content should be scanned for instruc
 ### Action
 
 Apply the retrieval filter guard patch. This is a `guard_patch` with `safety=medium`, so it requires human review before application (staged_review gate mode).
+
+### After (expected with fix applied)
+
+With `enable_instruction_filter: True` and `block_override_patterns: True`, retrieved documents containing phrases like "ignore all previous instructions" would be filtered out before reaching the LLM context. The agent would still answer the user's question using the remaining clean documents. If all documents are filtered, the agent would acknowledge insufficient data rather than following adversarial instructions.
 
 Note: this detection was verified via observation logic tests (25/25 PASS) with injected retriever state. Production testing with a live RAG pipeline is pending.
 
