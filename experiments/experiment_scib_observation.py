@@ -12,6 +12,7 @@ Requires: Redis demo running at localhost:8000 with help articles ingested.
 """
 
 import csv
+import hashlib
 import json
 import sys
 import time
@@ -59,6 +60,9 @@ def run_query(query: str, use_cache: bool = True) -> dict:
     gt = features.get("grounding", {})
     ca = features.get("cache", {})
 
+    answer = raw.get("answer", "")
+    answer_hash = hashlib.md5(answer.encode("utf-8")).hexdigest()
+
     return {
         "query": query,
         "use_cache": use_cache,
@@ -67,7 +71,8 @@ def run_query(query: str, use_cache: bool = True) -> dict:
         "cache_similarity": raw.get("cache_similarity"),
         "sources_count": len(raw.get("sources", [])),
         "blocked": raw.get("blocked", False),
-        "answer_preview": raw.get("answer", "")[:80],
+        "answer_preview": answer[:80],
+        "answer_hash": answer_hash,
         "response_length": gt.get("response_length"),
         "tool_provided_data": gt.get("tool_provided_data"),
         "expansion_ratio": gt.get("expansion_ratio"),
@@ -234,6 +239,23 @@ def main():
         if sims:
             print(f"  Similarity range:  {min(sims):.3f} - {max(sims):.3f}")
             print(f"  Similarity values: {', '.join(f'{s:.3f}' for s in sims)}")
+
+    # Answer hash comparison for cache hit pairs
+    if cache_hits:
+        print(f"\n  Answer hash comparison (cache hit pairs):")
+        for hit in cache_hits:
+            label = hit["pair_label"]
+            seed = next((r for r in all_results
+                         if r["pair_label"] == label and r["role"] == "seed"), None)
+            probe_off = next((r for r in all_results
+                              if r["pair_label"] == label and r["role"] == "probe_cache_off"), None)
+            if seed and probe_off:
+                same_as_seed = hit["answer_hash"] == seed["answer_hash"]
+                same_as_fresh = hit["answer_hash"] == probe_off["answer_hash"]
+                print(f"    {label}:")
+                print(f"      cache hit hash matches seed:  {same_as_seed}")
+                print(f"      cache hit hash matches fresh: {same_as_fresh}")
+                print(f"      similarity: {hit['cache_similarity']}")
 
     print()
 
