@@ -61,6 +61,7 @@ class RedisDemoAdapter(BaseAdapter):
         answer = normalized.get("answer", "")
         from_cache = normalized.get("from_cache", False)
         cache_similarity = normalized.get("cache_similarity")
+        blocked = normalized.get("blocked", False)
 
         # Source data analysis
         source_texts = []
@@ -90,6 +91,40 @@ class RedisDemoAdapter(BaseAdapter):
                     sim = s.get("similarity", 0.0)
                     if isinstance(sim, (int, float)) and sim > best_similarity:
                         best_similarity = sim
+
+        # Blocked queries are guardrail-normal, not failures.
+        # Mark progress_made=True and retrieval.skipped=True to prevent
+        # false failure detection.
+        if blocked:
+            return {
+                "input": {"ambiguity_score": 0.3},
+                "interaction": {
+                    "clarification_triggered": False,
+                    "user_correction_detected": False,
+                },
+                "reasoning": {"replanned": False, "hypothesis_count": 1},
+                "cache": {
+                    "hit": False,
+                    "similarity": 0.0,
+                    "query_intent_similarity": 1.0,
+                },
+                "retrieval": {"skipped": True},
+                "response": {"alignment_score": 1.0},
+                "tools": {
+                    "call_count": 0, "repeat_count": 0,
+                    "unique_tools": 0, "error_count": 0,
+                    "soft_error_count": 0,
+                },
+                "state": {"progress_made": True},
+                "grounding": {
+                    "tool_provided_data": False,
+                    "uncertainty_acknowledged": True,
+                    "response_length": response_length,
+                    "source_data_length": 0,
+                    "expansion_ratio": 0.0,
+                },
+                "meta": {"blocked_by_guardrail": True},
+            }
 
         return {
             "input": {
