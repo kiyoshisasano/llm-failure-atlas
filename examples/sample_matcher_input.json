@@ -1,0 +1,40 @@
+{
+  "input": {
+    "ambiguity_score": 0.3
+  },
+  "interaction": {
+    "clarification_triggered": false,
+    "user_correction_detected": false
+  },
+  "reasoning": {
+    "replanned": false,
+    "hypothesis_count": 1
+  },
+  "cache": {
+    "hit": false,
+    "similarity": 0.0,
+    "query_intent_similarity": 1.0
+  },
+  "retrieval": {
+    "skipped": true
+  },
+  "response": {
+    "alignment_score": 0.3
+  },
+  "tools": {
+    "call_count": 1,
+    "repeat_count": 0,
+    "error_count": 0,
+    "soft_error_count": 1
+  },
+  "state": {
+    "progress_made": false
+  },
+  "grounding": {
+    "tool_provided_data": false,
+    "uncertainty_acknowledged": false,
+    "response_length": 450,
+    "source_data_length": 0,
+    "expansion_ratio": 0.0
+  }
+}
