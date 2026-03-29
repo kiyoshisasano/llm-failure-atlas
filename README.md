@@ -16,9 +16,9 @@ result = diagnose(raw_log, adapter="langchain")
 
 ---
 
-## Quick Start (detection demo)
+## End-to-End Example (Atlas + Debugger)
 
-Run Atlas detection on a sample trace. This demonstrates the matcher and signals in isolation.
+Run a full example including detection (Atlas) and diagnosis (Debugger):
 
 ```bash
 git clone https://github.com/kiyoshisasano/llm-failure-atlas.git
