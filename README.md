@@ -1,18 +1,24 @@
 # LLM Failure Atlas
 
-Detect, diagnose, and fix failures in LLM agent systems. One line to add, fully deterministic, no ML required.
+The detection and pattern library for LLM agent failures. Defines failure patterns, signals, and adapters. Fully deterministic, no ML required.
+
+For root cause diagnosis, explanation, and fixes, use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
 
 ```python
+# Detection only (Atlas)
 from adapters.callback_handler import watch
+graph = watch(workflow.compile(), auto_diagnose=True)
 
-graph = watch(workflow.compile(), auto_diagnose=True, auto_pipeline=True)
-result = graph.invoke({"messages": [...]})
-# → root cause + explanation + fix proposal printed automatically
+# Full diagnosis (via Debugger)
+from diagnose import diagnose
+result = diagnose(raw_log, adapter="langchain")
 ```
 
 ---
 
-## Quick Start
+## Quick Start (detection demo)
+
+Run Atlas detection on a sample trace. This demonstrates the matcher and signals in isolation.
 
 ```bash
 git clone https://github.com/kiyoshisasano/llm-failure-atlas.git
@@ -31,16 +37,19 @@ python quickstart_demo.py
 
 ## How to Use
 
-Add one line to your LangGraph agent:
+Add one line to your LangGraph agent for failure detection:
 
 ```python
 from adapters.callback_handler import watch
 
-graph = watch(workflow.compile(), auto_diagnose=True, auto_pipeline=True)
+graph = watch(workflow.compile(), auto_diagnose=True)
 result = graph.invoke({"messages": [HumanMessage(content="...")]})
+# → detected failures printed on completion
 ```
 
-The original graph behavior is unchanged. Atlas observes execution and prints diagnosis on completion. Requires `pip install langchain-core`. Core pipeline requires only `pyyaml`.
+Add `auto_pipeline=True` to also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause + explanation + fixes) automatically.
+
+The original graph behavior is unchanged. Requires `pip install langchain-core`. Core pipeline requires only `pyyaml`.
 
 **Other integration options:**
 
