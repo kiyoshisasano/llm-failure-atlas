@@ -64,25 +64,6 @@ See `adapters/` for full examples of each method.
 
 ---
 
-## Minimal Detection Example (Matcher Only)
-
-Run a single failure pattern against a prepared matcher input — no agent, no debugger:
-
-```python
-from matcher import run
-
-result = run("failures/incorrect_output.yaml", "examples/sample_matcher_input.json")
-
-print(result["failure_id"])   # "incorrect_output"
-print(result["diagnosed"])    # True
-print(result["confidence"])   # 0.7
-print(result["signals"])      # which signals fired
-```
-
-This is useful for understanding how detection works, testing custom adapters, or debugging signal behavior. For full pipeline usage (diagnosis, explanation, fixes), use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
-
----
-
 ## What You Get
 
 When a failure is detected:
@@ -109,6 +90,25 @@ Grounding:  tool_provided_data=False  uncertainty_acknowledged=True
 This specific combination (no data + disclosed) is acceptable behavior. Other grounding states — such as no data without disclosure, or thin grounding with high expansion ratio — may indicate risk. See the [Operational Playbook](docs/operational_playbook.md) for the full decision framework.
 
 For real-world walkthroughs, see [Applied Debugging Examples](docs/applied_debugging_examples.md).
+
+---
+
+## Minimal Detection Example (Matcher Only)
+
+Run a single failure pattern against a prepared matcher input — no agent, no debugger:
+
+```python
+from matcher import run
+
+result = run("failures/incorrect_output.yaml", "examples/sample_matcher_input.json")
+
+print(result["failure_id"])   # "incorrect_output"
+print(result["diagnosed"])    # True
+print(result["confidence"])   # 0.7
+print(result["signals"])      # which signals fired
+```
+
+This is useful for understanding how detection works, testing custom adapters, or debugging signal behavior. For full pipeline usage (diagnosis, explanation, fixes), use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
 
 ---
 
