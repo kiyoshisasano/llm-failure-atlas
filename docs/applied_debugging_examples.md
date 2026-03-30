@@ -242,7 +242,7 @@ Grounding:
 
 ### Interpretation
 
-expansion_ratio=0.55 means the response is shorter than the source data. The agent condensed the retrieved articles into a focused answer. This is healthy grounding — the answer does not exceed the evidence. Verified across 5 different queries with expansion_ratio consistently between 0.44 and 0.84, all below 1.0.
+expansion_ratio=0.55 means the response is shorter than the source data. The agent condensed the retrieved articles into a focused answer. This is healthy grounding — the answer does not exceed the evidence.
 
 ### What this means
 

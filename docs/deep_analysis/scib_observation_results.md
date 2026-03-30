@@ -42,4 +42,8 @@ Approximately half of the pairs resulted in cache hits. In all cache-hit cases, 
 
 ## Reproduction
 
+<<<<<<< HEAD
 Experiment scripts are in `experiments/`. Raw data is retained locally.
+=======
+Experiment scripts are in `experiments/`. Raw data is retained locally.
+>>>>>>> 5f7592b (cleanup: remove experiment scripts, redact specific values from docs)

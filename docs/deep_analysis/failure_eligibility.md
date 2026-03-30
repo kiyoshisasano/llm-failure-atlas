@@ -36,32 +36,29 @@ Extension of `incorrect_output` as a new symptom modifier, similar to `grounding
 
 ---
 
-## 2. Semantic Cache Intent Bleeding (SCIB threshold)
+## 2. Semantic Cache Intent Bleeding (SCIB)
 
 ### Current observable state
 
-- `semantic_cache_intent_bleeding` pattern exists with signal `cache_query_intent_mismatch` (fires when `cache.query_intent_similarity` is below a threshold)
-- Redis demo observed cache reuse at similarity=0.691 for a different-intent query (refund → cancel)
-- Valid cache reuse observed at similarity=0.780 (password reset rephrase)
-- Current signal threshold did not trigger for the observed mismatch case
+- `semantic_cache_intent_bleeding` pattern exists with signal `cache_query_intent_mismatch`
+- Experiments confirmed that cached responses are returned for different-intent queries
+- The existing signal did not trigger for observed mismatch cases
+- 30 seed/probe pairs tested across 3 rounds (15 cache hits observed)
 
-### Why not diagnosable (at current threshold)
+### Why not diagnosable
 
-- The gap between observed mismatch (0.691) and valid reuse (0.780) is narrow
-- Only 2 cache-hit data points exist
-- Adjusting the threshold in either direction creates unacceptable trade-offs: lowering misses real cases, raising creates false positives on valid rephrases
+- Similarity values for different-intent and valid-rephrase cases overlap — no clean threshold exists
+- Adjusting the threshold in either direction creates unacceptable trade-offs
 - Similarity alone does not capture intent difference — two queries can be semantically similar but have different intents
 
 ### Required conditions to become diagnosable
 
-1. **More cache-hit observations:** at least 10 seed/probe pairs with confirmed intent match/mismatch labels, covering the 0.6–0.9 similarity range
-2. **Secondary signal:** a metric beyond raw similarity that distinguishes intent mismatch from valid rephrase (e.g., answer overlap between cached response and fresh RAG response for the same query)
-3. **Answer comparison capability:** ability to compare the cached answer against what fresh RAG would have produced (currently available via `answer_hash` in experiments but not in the adapter)
-4. **Cross-environment validation:** confirmation that the similarity distribution generalizes beyond the Redis workshop demo
+1. **Secondary signal:** a metric beyond raw similarity that distinguishes intent mismatch from valid rephrase (e.g., answer comparison between cached and fresh RAG responses)
+2. **Cross-environment validation:** confirmation that the observed behavior generalizes beyond a single demo environment
 
 ### Likely pattern location if promoted
 
-Threshold adjustment within existing `semantic_cache_intent_bleeding` pattern. No new pattern needed — the existing signal structure is correct, only the detection boundary needs calibration.
+The existing `semantic_cache_intent_bleeding` signal structure is correct. Detection improvement requires a secondary signal, not threshold adjustment.
 
 ---
 
