@@ -55,8 +55,8 @@ result = graph.invoke({"messages": [HumanMessage(content="...")]})
 ```
 
 **Flags:**
-- `auto_diagnose=True` — run Atlas detection (pattern matching + signals) on completion
-- `auto_pipeline=True` — also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause + explanation + fixes) automatically
+- `auto_diagnose=True` — run Atlas detection only (pattern matching + signals, no causal analysis)
+- `auto_pipeline=True` — also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause, explanation, fix proposal) automatically
 
 The original graph behavior is unchanged. Requires `pip install langchain-core`. Core pipeline requires only `pyyaml`.
 
