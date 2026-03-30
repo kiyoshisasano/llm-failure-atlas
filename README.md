@@ -270,6 +270,18 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://gi
 
 ---
 
+## Known Limitations
+
+Some failure-like behaviors are observable but not yet diagnosable as failure patterns:
+
+- **Thin grounding** — the agent supplements sparse tool data with training knowledge without disclosure. Observable via `expansion_ratio`, but no threshold has been calibrated (insufficient data).
+- **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Observable in experiments, but the existing similarity-based signal does not trigger in all cases.
+- **Semantic mismatch** — a tool returns data for a completely different topic. Not detectable with current heuristics; requires embedding-based comparison (Layer 1 ML).
+
+These are tracked as observation gaps, not planned features. See [Failure Eligibility](docs/deep_analysis/failure_eligibility.md) for the conditions required to promote each to a diagnosable pattern.
+
+---
+
 ## Structure
 
 ```
@@ -284,16 +296,18 @@ llm-failure-atlas/
     crewai_adapter.py              # CrewAI event listener
     langchain_adapter.py           # LangChain batch adapter
     langsmith_adapter.py           # LangSmith batch adapter
+    redis_help_demo_adapter.py     # Redis workshop adapter
     base_adapter.py                # abstract interface
   docs/
-    applied_debugging_examples.md  # 5 real-world cases
-    operational_playbook.md        # production decision framework
-  examples/                        # 10 reproducible test cases
-  docs/
-    applied_debugging_examples.md  # 5 real-world cases
-    operational_playbook.md        # production decision framework
-    deep_analysis/                 # exploration results
+    applied_debugging_examples.md  # 7 real-world cases
+    operational_playbook.md        # 9-pattern decision framework
+    deep_analysis/
+      failure_eligibility.md       # observation gap → failure requirements
+      scib_observation_results.md  # cache reuse experiments
+      decision_failure_exploration.md
+      observation_layer_gap_analysis.md
   experiments/                     # observation data collection scripts
+  examples/                        # 10 reproducible test cases + sample input
   evaluation/                      # metrics + evaluation runner
   validation/                      # 30 scenarios + annotations
   learning/                        # suggestion-only learning store
