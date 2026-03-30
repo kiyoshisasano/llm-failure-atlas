@@ -1,6 +1,6 @@
 # Semantic Cache Reuse — Observation Results
 
-Date: 2026-03-28
+Updated: 2026-03-31
 
 ## Purpose
 
@@ -12,11 +12,11 @@ Observed whether cached responses are reused for queries with different intent i
 - Backend: FastAPI + Redis Vector Search + OpenAI gpt-4o-mini
 - Help Center RAG: 29 articles ingested via `/api/help/ingest`
 - Semantic cache: Redis-based, cosine similarity, auto-populated on first query
-- Adapter: `adapters/redis_demo_adapter.py`
+- Adapter: `adapters/redis_help_demo_adapter.py`
 
 ## Experiment Design
 
-8 seed/probe pairs. For each pair:
+20 seed/probe pairs across 2 rounds (8 + 12). For each pair:
 1. Clear cache
 2. Seed query (cache on) — always RAG
 3. Probe query (cache on) — may cache hit
@@ -25,6 +25,8 @@ Observed whether cached responses are reused for queries with different intent i
 Compare answer_hash across the three runs to determine if the cache returned the seed's answer for a different probe query.
 
 ## Results
+
+### Round 1 (8 pairs)
 
 | Pair | Cache hit | Reused seed answer | Notes |
 |---|---|---|---|
@@ -37,55 +39,85 @@ Compare answer_hash across the three runs to determine if the cache returned the
 | parental controls vs buffering | no | - | - |
 | download vs offline | BLOCKED | - | Guardrail blocked probe |
 
-Cache hit occurred in only 2 of 8 pairs. The remaining 6 were cache misses. One pair was blocked by guardrails.
+### Round 2 (12 pairs)
 
-## Cache Reuse Case: refund vs cancel
+| Pair | Cache hit | Similarity | Reused seed answer | Notes |
+|---|---|---|---|---|
+| upgrade vs downgrade plan | YES | 0.696 | YES | Different query pair |
+| cancel vs delete account | BLOCKED | - | - | Guardrail blocked |
+| change email vs change password | YES | 0.609 | YES | Different query pair |
+| buffering vs no sound | no | - | - | - |
+| refund vs billing history | no | - | - | - |
+| can't log in vs forgot username | BLOCKED | - | - | Guardrail blocked |
+| update payment vs change card | BLOCKED | - | - | Guardrail blocked |
+| subscription help vs subscription question | YES | 0.847 | YES | Close rephrase pair |
+| contact support vs customer service | no | - | - | - |
+| account locked vs locked out | YES | 0.909 | YES | Close rephrase pair |
+| add profile vs remove profile | YES | 0.614 | YES | Different query pair |
+| charged twice vs wrong amount | YES | 0.656 | YES | Different query pair |
 
-**Seed:** "I want a refund for my subscription" → RAG response (hash: `f13e0162`)
+### Combined Summary
 
-**Probe (cache on):** "How do I cancel my subscription?" → cache hit, returned the seed's response (hash: `f13e0162`)
+| Category | Count |
+|---|---|
+| Total pairs tested | 20 |
+| Cache hits | 8 |
+| Cache misses | 8 |
+| Blocked by guardrails | 4 |
+| Seed answer reused | 8 (all cache hits) |
 
-**Probe (cache off):** "How do I cancel my subscription?" → fresh RAG response about cancellation steps (hash: `8cac4497`)
+## Similarity Distribution
 
-The probe received a response about refunds when the user asked about cancellation. The answer_hash confirms the cached response was returned verbatim.
+All 8 cache-hit cases resulted in the seed answer being reused verbatim (confirmed by answer_hash). The similarity values fall into two groups:
 
-## Cache Reuse Case: password reset rephrase
+**Different-query reuse (5 cases):**
 
-**Seed:** "I forgot my password" → RAG response (hash: `561ca107`)
+| Similarity | Pair |
+|---|---|
+| 0.609 | change email → change password |
+| 0.614 | add profile → remove profile |
+| 0.656 | charged twice → wrong amount |
+| 0.691 | refund → cancel |
+| 0.696 | upgrade plan → downgrade plan |
 
-**Probe (cache on):** "How do I reset my password?" → cache hit, returned the seed's response (hash: `561ca107`)
+**Close rephrase reuse (3 cases):**
 
-This is a close rephrase of the same question. Cache reuse appears appropriate in this case.
+| Similarity | Pair |
+|---|---|
+| 0.780 | forgot password → reset password |
+| 0.847 | subscription help → subscription question |
+| 0.909 | account locked → locked out |
+
+The two groups do not overlap. Different-query cases range from 0.609 to 0.696. Close rephrase cases range from 0.780 to 0.909. A gap of approximately 0.08 exists between the two groups.
 
 ## Atlas Detection
 
-Matcher was run on the cache reuse case (refund vs cancel). The current `semantic_cache_intent_bleeding` signal did not trigger, while grounding-related symptom modifiers appeared at low confidence.
+The current `semantic_cache_intent_bleeding` signal did not trigger for any of the observed different-query reuse cases.
 
-## Observations on Similarity
+## Observations
 
-In the observed cache-hit cases, similarity values alone did not cleanly distinguish all reuse situations. More observations are needed before making any change to signal thresholds.
+- In this environment, different-query reuse and close rephrase reuse occupy distinct similarity ranges with no overlap in the observed data
+- The gap between the two groups suggests that similarity-based separation may be feasible for this domain, but 8 data points are insufficient for confident threshold calibration
+- All cache hits resulted in verbatim seed answer reuse (no partial reuse observed)
+- Guardrails blocked 4 queries, preventing cache behavior observation for those pairs
 
-## Not Implemented (and why)
+## Not Changed
 
-- **Threshold adjustment:** Only 2 cache-hit observations. Insufficient data for calibration.
-- **cache_behavior adapter field:** Rejected — duplicates existing `cache.similarity`. Analysis belongs in analysis scripts.
+- No threshold adjustments made (data still limited)
+- No new failure signals added
+- SCIB pattern definition unchanged
 
-## Guardrails Discovery
+## Next Steps
 
-"Can I watch movies without internet?" was blocked by the demo's guardrails (`blocked=True`). The adapter handles this by setting safe telemetry values to prevent false failure detection.
-
-## Conclusion
-
-Cache reuse with a different follow-up query was observed and confirmed in this environment. The current `semantic_cache_intent_bleeding` signal did not trigger for this case.
-
-With only 2 cache-hit observations, it is premature to adjust any thresholds. Next steps:
-- Collect more seed/probe pairs across diverse query relationships
-- Continue evaluating cache reuse behavior in real environments
+- Continue collecting seed/probe pairs to fill the observed gap (0.70-0.78 range)
+- Test with query pairs that are likely to fall in the gap region
+- Evaluate whether the distribution holds across different help center article sets
 
 ## Reproduction
 
 ```powershell
-cd C:\Users\teiki\atlas-workspace\llm-failure-atlas
-python experiments/experiment_scib_observation.py
-python experiments/analyze_cache_divergence.py
+cd C:\Users\teiki\atlas-workspace
+python experiment_scib_round2.py
 ```
+
+Previous round: `llm-failure-atlas/experiments/experiment_scib_observation.py`
