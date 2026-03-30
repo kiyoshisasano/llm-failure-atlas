@@ -2,7 +2,14 @@
 
 The detection and pattern library for LLM agent failures. Defines failure patterns, signals, and adapters. Fully deterministic, no ML required.
 
-For root cause diagnosis, explanation, and fixes, use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
+**Atlas detects.** For root cause diagnosis, explanation, and fixes, use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
+
+| When | Use | What you get |
+|---|---|---|
+| Agent is running | Atlas `watch()` | Live detection, optional auto-diagnosis |
+| You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal |
+| Atlas only (no debugger) | `auto_diagnose=True` | Detected failures + telemetry |
+| Full pipeline | `auto_pipeline=True` or `diagnose()` | Detection + diagnosis + explanation + fix |
 
 ```python
 # Detection only (Atlas)
@@ -47,11 +54,15 @@ result = graph.invoke({"messages": [HumanMessage(content="...")]})
 # → detected failures printed on completion
 ```
 
-Add `auto_pipeline=True` to also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause + explanation + fixes) automatically.
+**Flags:**
+- `auto_diagnose=True` — run Atlas detection (pattern matching + signals) on completion
+- `auto_pipeline=True` — also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause + explanation + fixes) automatically
 
 The original graph behavior is unchanged. Requires `pip install langchain-core`. Core pipeline requires only `pyyaml`.
 
 **Other integration options:**
+
+Adapters normalize raw logs from different frameworks into the format Atlas expects.
 
 | Method | Use when | Code |
 |---|---|---|
