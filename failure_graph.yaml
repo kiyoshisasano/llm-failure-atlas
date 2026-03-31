@@ -141,6 +141,25 @@ nodes:
       confidence in any single diagnosis. Flags cases that need review.
       Not part of the causal graph.
 
+  # --- Termination failures ---
+
+  - id: premature_termination
+    role: domain
+    layer: output
+    status: defined
+    note: >
+      Agent terminated without producing output and without raising an
+      error. Detects only physical termination (silent exit), not
+      low-quality or suboptimal termination.
+
+  - id: failed_termination
+    role: domain
+    layer: output
+    status: defined
+    note: >
+      Agent terminated due to an execution error without producing
+      output. Detects error-driven exits only.
+
 
 edges:
 

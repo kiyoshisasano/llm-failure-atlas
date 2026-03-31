@@ -1,0 +1,66 @@
+failure_id: failed_termination
+
+signal_contract:
+  shared_definitions: true
+
+cogency_tags: [tool_failure]
+
+# Failed termination telemetry contract
+# Required log fields:
+#   state.chain_error_occurred  bool
+#   state.output_produced       bool
+#
+# Termination Detection Scope
+#
+# This pattern detects execution errors that caused the agent to stop.
+# It does NOT assess whether the error was recoverable or whether the
+# agent should have retried.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: execution_error_caused_termination
+      from:
+        - state.chain_error_occurred
+      rule: state.chain_error_occurred == true
+      comment: >
+        agent execution ended with an error — the run did not
+        complete normally
+
+    - signal: error_without_output
+      from:
+        - state.chain_error_occurred
+        - state.output_produced
+      rule: state.chain_error_occurred == true and state.output_produced == false
+      comment: >
+        agent encountered an error and produced no output —
+        complete failure to deliver a result
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # execution error alone may not be a termination failure — some
+  # agents recover from errors and still produce output.
+  # error + no output = definitive failed termination.
+  #
+  # error only = 0.35 < 0.6 → not diagnosed (may have recovered)
+  # error + no output = 0.35 + 0.35 = 0.7 → diagnosed
+
+  evidence_modifiers:
+    - signal: execution_error_caused_termination
+      add: 0.35
+
+    - signal: error_without_output
+      add: 0.35
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0
