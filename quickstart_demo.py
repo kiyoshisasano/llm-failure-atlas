@@ -17,14 +17,12 @@ import json
 import sys
 from pathlib import Path
 
-# Ensure imports work from atlas root
-ATLAS_ROOT = Path(__file__).parent
+# Ensure imports work from both repos
+DEBUGGER_ROOT = Path(__file__).parent
+ATLAS_ROOT = DEBUGGER_ROOT.parent / "llm-failure-atlas"
 sys.path.insert(0, str(ATLAS_ROOT))
 sys.path.insert(0, str(ATLAS_ROOT / "adapters"))
-
-DEBUGGER_ROOT = ATLAS_ROOT.parent / "agent-failure-debugger"
-if DEBUGGER_ROOT.exists():
-    sys.path.insert(0, str(DEBUGGER_ROOT))
+sys.path.insert(0, str(DEBUGGER_ROOT))
 
 SAMPLE_TRACE = ATLAS_ROOT / "adapters" / "sample_langchain_trace.json"
 FAILURES_DIR = ATLAS_ROOT / "failures"

@@ -16,7 +16,7 @@ from pathlib import Path
 # Add parent dirs to path for imports
 EVAL_DIR = Path(__file__).parent
 ATLAS_DIR = EVAL_DIR.parent
-DEBUGGER_DIR = ATLAS_DIR.parent / "debugger"
+DEBUGGER_DIR = ATLAS_DIR.parent / "agent-failure-debugger"
 
 sys.path.insert(0, str(ATLAS_DIR))
 sys.path.insert(0, str(DEBUGGER_DIR))
