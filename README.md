@@ -6,9 +6,9 @@ The detection and pattern library for LLM agent failures. Defines failure patter
 
 | When | Use | What you get |
 |---|---|---|
-| Agent is running | Atlas `watch()` | Live detection, optional auto-diagnosis |
+| Agent is running | Atlas `watch()` | Live detection, optional detection reporting |
 | You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal |
-| Atlas only (no debugger) | `auto_diagnose=True` | Detected failures + telemetry |
+| Atlas only (no debugger) | `auto_diagnose=True` | Detected failures (pattern matching + signals) + telemetry |
 | Full pipeline | `auto_pipeline=True` or `diagnose()` | Detection + diagnosis + explanation + fix proposal (with optional auto-apply) |
 
 ```python
@@ -204,15 +204,15 @@ The callback handler infers telemetry fields not directly observable from agent 
 
 ## Tested with Real Agents
 
-Verified with real LangGraph agents under controlled scenarios, using both OpenAI and Anthropic APIs.
+Verified with real LangGraph agents under controlled scenarios, using OpenAI, Anthropic, and Google APIs.
 
-| Scenario | gpt-4o-mini | Claude Haiku 4.5 |
-|---|---|---|
-| Forced topic pivot | `incorrect_output` (0.7) | `incorrect_output` (0.7) |
-| Forced tool retry loop | `agent_tool_call_loop` (0.7) | `agent_tool_call_loop` (0.7) |
-| No clarification allowed | `clarification_failure` (0.7) | `clarification_failure` (0.7) |
+| Scenario | gpt-4o-mini | Claude Haiku 4.5 | Gemini 2.5 Flash |
+|---|---|---|---|
+| Forced topic pivot | `incorrect_output` (0.7) | `incorrect_output` (0.7) | `incorrect_output` (0.7) |
+| Forced tool retry loop | `agent_tool_call_loop` (0.7) | `agent_tool_call_loop` (0.7) | `agent_tool_call_loop` (0.7) |
+| No clarification allowed | `clarification_failure` (0.7) | `clarification_failure` (0.7) | `clarification_failure` (0.7) |
 
-Scenarios use system prompts to induce specific failure behaviors, ensuring reproducibility across model versions. Without constraints, the two models handle the same inputs differently — Claude asks for clarification where gpt-4o-mini guesses, and Claude reports tool errors immediately where gpt-4o-mini retries. Atlas correctly reports 0 failures when no failure occurs, regardless of model.
+Scenarios use system prompts to induce specific failure behaviors, ensuring reproducibility across model versions. Without constraints, the three models handle the same inputs differently: Claude asks for clarification where gpt-4o-mini guesses, Gemini asks for dates where Claude asks for IDs. Atlas correctly reports 0 failures when no failure occurs, regardless of model.
 
 Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses. See [Cross-Model Validation](docs/cross_model_validation.md) for the full report.
 

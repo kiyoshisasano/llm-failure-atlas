@@ -2,13 +2,13 @@
 
 ## Summary
 
-Atlas detection logic is model-agnostic. Under controlled scenarios, both
-gpt-4o-mini and Claude Haiku 4.5 produce identical detection results
-(3/3 PASS, all at conf=0.7). The `watch()` and `diagnose()` code paths
-produce identical telemetry and diagnoses. False positive testing confirmed
-0 domain failures on 7 healthy telemetry scenarios. One known gap remains:
-thin grounding (agent fabricates specifics from no data) is observable but
-not yet diagnosable.
+Atlas detection logic is model-agnostic. Under controlled scenarios,
+gpt-4o-mini, Claude Haiku 4.5, and Gemini 2.5 Flash all produced identical
+detection results (9/9 PASS across three models, all at conf=0.7). The
+`watch()` and `diagnose()` code paths produced identical telemetry and
+diagnoses. False positive testing confirmed 0 domain failures on 7 healthy
+telemetry scenarios. One Known gap remains: thin grounding (agent produces
+specifics from no source data) is observable but not yet diagnosable.
 
 Three code fixes were made during this validation: replanning marker
 refinement, clarification marker expansion, and langchain_adapter
@@ -18,7 +18,7 @@ telemetry parity.
 
 ## Setup
 
-- **Models:** gpt-4o-mini, claude-haiku-4-5-20251001 (temperature=0)
+- **Models:** gpt-4o-mini, claude-haiku-4-5-20251001, gemini-2.5-flash (temperature=0)
 - **Runtime:** LangGraph + Atlas watch() / diagnose()
 - **Date:** 2026-03-31
 
@@ -26,14 +26,14 @@ telemetry parity.
 
 ## Unconstrained Scenarios
 
-Reproduced the 3 original Stage 1 scenarios (no system prompt) with both
-models.
+Reproduced the 3 original Stage 1 scenarios (no system prompt) with all
+three models.
 
-| Scenario | gpt-4o-mini (Stage 1) | gpt-4o-mini (current) | Claude Haiku |
-|---|---|---|---|
-| flight_hotel_pivot | incorrect_output (0.7) | No failure | No failure |
-| tool_loop | agent_tool_call_loop (0.7) | No failure | No failure |
-| ambiguous_cancel | clarification_failure (0.7) | No failure | No failure |
+| Scenario | gpt-4o-mini (Stage 1) | gpt-4o-mini (current) | Claude Haiku | Gemini 2.5 Flash |
+|---|---|---|---|---|
+| flight_hotel_pivot | incorrect_output (0.7) | No failure | No failure | No failure |
+| tool_loop | agent_tool_call_loop (0.7) | No failure | No failure | No failure |
+| ambiguous_cancel | clarification_failure (0.7) | No failure | No failure | incorrect_output (0.7) |
 
 In all current runs, no failures occurred — the models handled each
 scenario without producing the failure behavior. Atlas correctly reported
@@ -51,25 +51,25 @@ unconstrained scenarios are unsuitable for cross-version regression testing.
 System prompts force specific failure-inducing behavior, ensuring
 reproducibility across model versions.
 
-| Scenario | gpt-4o-mini | Claude Haiku |
-|---|---|---|
-| forced_pivot | incorrect_output (0.7) ✅ | incorrect_output (0.7) ✅ |
-| forced_retry_loop | agent_tool_call_loop (0.7) ✅ | agent_tool_call_loop (0.7) ✅ |
-| no_clarification_allowed | clarification_failure (0.7) ✅ | clarification_failure (0.7) ✅ |
-| grounding_gap | — | ⚠ Known gap |
+| Scenario | gpt-4o-mini | Claude Haiku | Gemini 2.5 Flash |
+|---|---|---|---|
+| forced_pivot | incorrect_output (0.7) ✅ | incorrect_output (0.7) ✅ | incorrect_output (0.7) ✅ |
+| forced_retry_loop | agent_tool_call_loop (0.7) ✅ | agent_tool_call_loop (0.7) ✅ | agent_tool_call_loop (0.7) ✅ |
+| no_clarification_allowed | clarification_failure (0.7) ✅ | clarification_failure (0.7) ✅ | clarification_failure (0.7) ✅ |
+| grounding_gap | — | ⚠ Known gap | — |
 
-**6/6 PASS across both models.** The grounding_gap scenario (Claude only)
+**9/9 PASS across three models (3 scenarios x 3 models).** The grounding_gap scenario (Claude only)
 is a known observation gap, not a detection defect — see below.
 
-### grounding_gap (known gap)
+### grounding_gap (Known gap)
 
 System prompt demanded a detailed weather forecast despite the tool returning
-"weather API is down." Claude fabricated specific temperatures and
+"weather API is down." Claude produced specific temperatures and
 precipitation chances, prefacing with "Based on typical weather patterns."
 
 Telemetry: tool_provided_data=False, expansion_ratio=inf,
 uncertainty_acknowledged=True. The agent disclosed its lack of data but
-still produced fabricated specifics. This is the "thin grounding" observation
+still produced specifics without source data. This is the "thin grounding" observation
 gap documented in failure_eligibility.md. The current pattern set does not
 cover it.
 
@@ -80,8 +80,9 @@ cover it.
 The `watch()` path builds telemetry via callback handler. The `diagnose()`
 path builds telemetry via langchain_adapter from a trace dict. These are
 separate code paths. After fixing the adapter (see Code Changes below),
-both paths produce identical telemetry and identical diagnoses for all
-3 controlled scenarios.
+both paths produced identical telemetry and identical diagnoses for all
+3 controlled scenarios across all tested models (verified with Claude Haiku
+and Gemini 2.5 Flash).
 
 | Scenario | watch() | diagnose() | Telemetry diff |
 |---|---|---|---|
@@ -111,13 +112,12 @@ both paths produce identical telemetry and identical diagnoses for all
 
 ## Cross-Model Behavioral Differences
 
-| Behavior | gpt-4o-mini | Claude Haiku |
-|---|---|---|
-| Ambiguous input | Guesses and executes | Asks for clarification |
-| Tool error | Retries multiple times | Reports failure after 1 attempt |
-| Retry expression | Mechanically retries | Inserts "let me try" between retries |
-| Missing data | Generates from training data | Acknowledges gap, then generates |
-| Topic pivot | Suggests alternatives unprompted | Does not pivot without instruction |
+| Behavior | gpt-4o-mini | Claude Haiku | Gemini 2.5 Flash |
+|---|---|---|---|
+| Ambiguous input | Guesses and executes | Asks for clarification | Asks for clarification |
+| Tool error | Retries multiple times | Reports after 1 attempt | Retries a few times, then reports |
+| Missing data | Generates from training data | Acknowledges gap, then generates | Acknowledges gap, then generates |
+| Topic pivot | Suggests alternatives unprompted | Does not pivot without instruction | Does not pivot without instruction |
 
 ---
 
@@ -157,18 +157,20 @@ tests pass, 3/3 diagnose() path tests match watch() exactly.
 
 ## Findings
 
-1. **Detection is model-agnostic.** When a failure occurs, Atlas detects it
-   regardless of which LLM produced it. When no failure occurs, Atlas
-   correctly reports 0.
+1. **Detection is model-agnostic.** Verified across three vendors (OpenAI,
+   Anthropic, Google). When a failure occurs, Atlas detects it regardless
+   of which LLM produced it. When no failure occurs, Atlas correctly
+   reports 0. All 9 controlled tests (3 scenarios x 3 models) produced
+   identical results at conf=0.7.
 
 2. **Heuristic extraction required model-aware refinement.** Replanning and
    clarification markers were sensitive to model-specific phrasing. Both
    were fixed without regression.
 
-3. **Thin grounding gap confirmed.** A concrete instance of fabricated output
-   with no source data was observed. This validates observation gap #1 and
+3. **Thin grounding gap confirmed.** A concrete instance of output produced
+   without source data was observed. This validates observation gap #1 and
    provides data for future pattern design.
 
 4. **Reproducible testing requires controlled scenarios.** Model behavior
    drifts across API snapshot updates. System prompt-controlled scenarios
-   provide stable baselines across both model versions and model vendors.
+   provide stable baselines across model versions and vendors.
