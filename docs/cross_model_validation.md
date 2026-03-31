@@ -107,9 +107,56 @@ set does not cover it.
 
 ---
 
+## Experiment #4: diagnose() Path Verification
+
+The watch() path uses `callback_handler.py` to build telemetry directly from
+LangChain callbacks. The diagnose() path uses `langchain_adapter.py` to convert
+a raw trace dict. These are separate code paths that must produce identical
+telemetry for the same execution.
+
+### Initial result: 0/3 BOTH_PASS
+
+All 3 forced scenarios detected failures via watch() but not via diagnose().
+Root cause: `langchain_adapter.py` was missing several telemetry sections
+that `callback_handler.py` produces:
+
+| Missing field | Required by | Impact |
+|---|---|---|
+| state.progress_made | agent_tool_call_loop | Signal could not evaluate |
+| grounding.* | incorrect_output | Grounding signals missing |
+| reasoning.hypothesis_count | clarification_failure | Signal could not evaluate |
+| soft_error_count | (state inference) | Progress inference inaccurate |
+| topic-pivot alignment penalty | incorrect_output | alignment_score inflated |
+| user_correction inference | incorrect_output | Topic pivot not detected |
+
+### Fix: langchain_adapter parity
+
+Added the missing extraction methods to `langchain_adapter.py`:
+
+- `_extract_state()` — infers progress_made from tool output analysis
+- `_extract_grounding()` — assesses evidence quality (tool_provided_data,
+  uncertainty_acknowledged, expansion_ratio)
+- `hypothesis_count` in `_extract_reasoning()` — detects branching markers
+- `soft_error_count` in `_extract_tools()` — detects soft failures in outputs
+- Topic-pivot penalty and negation penalty in `_estimate_alignment()`
+- User correction inference in `_extract_interaction()` — detects topic pivot
+  without explicit feedback
+
+### Result after fix: 3/3 BOTH_PASS
+
+| Scenario | watch() | diagnose() | Telemetry diff |
+|---|---|---|---|
+| forced_pivot | incorrect_output (0.7) | incorrect_output (0.7) | None |
+| forced_retry_loop | agent_tool_call_loop (0.7) | agent_tool_call_loop (0.7) | None |
+| no_clarification_allowed | clarification_failure (0.7) | clarification_failure (0.7) | None |
+
+Both code paths now produce identical telemetry and identical diagnoses.
+
+---
+
 ## Code Changes
 
-Two issues were discovered and fixed during this experiment.
+Three issues were discovered and fixed during this experiment.
 
 ### 1. Replanning marker refinement
 
@@ -139,11 +186,25 @@ scenario.
 
 Applied to: `callback_handler.py`, `langchain_adapter.py`.
 
+### 3. langchain_adapter telemetry parity
+
+**Problem:** `langchain_adapter.py` was missing `state`, `grounding`,
+`hypothesis_count`, `soft_error_count`, topic-pivot alignment penalty, and
+user correction inference. This caused the diagnose() code path to produce
+different (incomplete) telemetry compared to watch(), resulting in missed
+detections.
+
+**Fix:** Added `_extract_state()`, `_extract_grounding()`, hypothesis branching
+detection, soft error counting, topic-pivot and negation penalties in alignment
+scoring, and user correction inference via topic pivot detection. All logic
+mirrors the corresponding callback_handler methods.
+
+Applied to: `langchain_adapter.py`.
+
 ### Regression verification
 
-After both fixes: 10/10 existing regression tests pass, 7/7 false positive
-tests pass. The replanning fix changed forced_retry_loop from MISS to PASS.
-The clarification fix eliminated a false positive on ambiguous_cancel.
+After all fixes: 10/10 existing regression tests pass, 7/7 false positive
+tests pass, 3/3 diagnose() path tests produce identical results to watch().
 
 ---
 

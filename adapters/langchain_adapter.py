@@ -81,6 +81,8 @@ class LangChainAdapter(BaseAdapter):
             "retrieval": self._extract_retrieval(normalized),
             "response": self._extract_response(normalized),
             "tools": self._extract_tools(normalized),
+            "state": self._extract_state(normalized),
+            "grounding": self._extract_grounding(normalized),
         }
 
     # ----- Tier 1: Deterministic extraction -----
@@ -113,6 +115,15 @@ class LangChainAdapter(BaseAdapter):
             return {"skipped": True}
         return {"skipped": False}
 
+    # Markers for tool outputs that indicate a soft failure (no usable data).
+    TOOL_SOFT_ERROR_MARKERS = [
+        "error", "unavailable", "service unavailable",
+        "could not", "failed to", "exception",
+        "no results", "0 results", "0 matching",
+        "not found", "no data", "no records",
+        "empty", "none found", "[]",
+    ]
+
     def _extract_tools(self, normalized: dict) -> dict:
         """Extract tool call patterns."""
         tool_steps = normalized["tool_steps"]
@@ -125,14 +136,25 @@ class LangChainAdapter(BaseAdapter):
         max_repeat = max(call_counts.values()) if call_counts else 0
         repeat_count = max_repeat - 1 if max_repeat > 1 else 0
 
-        # Detect errors
+        # Hard errors
         error_count = sum(1 for s in tool_steps if s.get("error"))
+
+        # Soft errors: tool returned successfully but output contains
+        # error/empty markers
+        soft_error_count = 0
+        for s in tool_steps:
+            if s.get("error"):
+                continue
+            output = json.dumps(s.get("outputs", {})).lower()
+            if any(m in output for m in self.TOOL_SOFT_ERROR_MARKERS):
+                soft_error_count += 1
 
         return {
             "call_count": call_count,
             "repeat_count": repeat_count,
             "unique_tools": len(set(s["name"] for s in tool_steps)) if tool_steps else 0,
             "error_count": error_count,
+            "soft_error_count": soft_error_count,
         }
 
     def _extract_interaction(self, normalized: dict) -> dict:
@@ -161,9 +183,38 @@ class LangChainAdapter(BaseAdapter):
                 clarification = True
                 break
 
+        # Infer user_correction_detected from response content when
+        # no explicit feedback is available. Detects topic pivot:
+        # response admits failure on the original task AND pivots
+        # to a different topic.
+        correction_detected = bool(user_correction)
+        if not correction_detected:
+            query = normalized.get("query", "").lower()
+            response = normalized.get("response", "").lower()
+            if query and response:
+                admits_failure = any(m in response for m in [
+                    "couldn't find", "could not find", "no flights",
+                    "unable to find", "no results", "unfortunately",
+                    "wasn't able", "was not able",
+                ])
+                topic_pivot = False
+                pivot_pairs = [
+                    ({"flight", "flights"},
+                     {"hotel", "hotels", "inn", "lodge", "suites"}),
+                    ({"restaurant", "restaurants"},
+                     {"cafe", "cafes", "bar", "bars"}),
+                    ({"buy", "purchase"}, {"rent", "lease"}),
+                ]
+                for query_topics, alt_topics in pivot_pairs:
+                    if ((query_topics & set(query.split()))
+                            and (alt_topics & set(response.split()))):
+                        topic_pivot = True
+                        break
+                correction_detected = admits_failure and topic_pivot
+
         return {
             "clarification_triggered": clarification,
-            "user_correction_detected": bool(user_correction),
+            "user_correction_detected": correction_detected,
         }
 
     # ----- Tier 2: Computed features -----
@@ -175,9 +226,10 @@ class LangChainAdapter(BaseAdapter):
         return {"ambiguity_score": score}
 
     def _extract_reasoning(self, normalized: dict) -> dict:
-        """Detect replanning from LLM step patterns."""
+        """Detect replanning and hypothesis branching from LLM step patterns."""
         llm_steps = normalized["llm_steps"]
         replanned = False
+        hypothesis_count = 1
 
         # Replanning markers that indicate a genuine change in approach.
         # "let me try" and "actually" are excluded: they commonly appear
@@ -195,7 +247,19 @@ class LangChainAdapter(BaseAdapter):
                     replanned = True
                     break
 
-        return {"replanned": replanned}
+        # Detect hypothesis branching
+        branching_markers = [
+            "alternatively", "on the other hand", "another option",
+            "option 1", "option a", "could also mean",
+            "there are two", "there are several",
+        ]
+        for step in llm_steps:
+            output = step.get("outputs", {}).get("text", "").lower()
+            if output and any(m in output for m in branching_markers):
+                hypothesis_count = 2
+                break
+
+        return {"replanned": replanned, "hypothesis_count": hypothesis_count}
 
     def _extract_response(self, normalized: dict) -> dict:
         """Estimate response alignment with query (heuristic)."""
@@ -261,7 +325,8 @@ class LangChainAdapter(BaseAdapter):
     def _estimate_alignment(self, query: str, response: str) -> float:
         """
         Tier 2: Heuristic alignment between query intent and response.
-        Higher = better aligned.
+        Higher = better aligned. Includes topic-pivot and negation penalties
+        to match callback_handler behavior.
         """
         if not query or not response:
             return 0.5
@@ -272,10 +337,125 @@ class LangChainAdapter(BaseAdapter):
         if not query_words:
             return 0.5
 
-        # Simple keyword overlap as proxy for alignment
+        # Base: word overlap
         overlap = len(query_words & response_words) / len(query_words)
 
+        # Topic mismatch penalty: response acts on a different entity
+        topic_pairs = [
+            ({"flight", "flights", "fly", "flying", "airline"},
+             {"hotel", "hotels", "inn", "lodge", "suites", "accommodation"}),
+            ({"buy", "purchase", "order"},
+             {"rent", "lease", "subscribe"}),
+            ({"cancel", "cancellation"},
+             {"book", "booking", "reserve"}),
+        ]
+        for query_topics, response_topics in topic_pairs:
+            query_has = bool(query_topics & query_words)
+            response_has = bool(response_topics & response_words)
+            query_addressed = bool(query_topics & response_words)
+            if query_has and response_has and not query_addressed:
+                overlap *= 0.2
+
+        # Negation penalty
+        negation_markers = [
+            "couldn't find", "no flights", "unfortunately",
+            "unable to find", "no results", "not available",
+        ]
+        if any(m in response.lower() for m in negation_markers):
+            overlap *= 0.5
+
         return round(min(1.0, overlap), 2)
+
+    # ---- State and grounding (parity with callback_handler) ----
+
+    def _extract_state(self, normalized: dict) -> dict:
+        """Infer state.progress_made from tool results."""
+        tool_steps = normalized["tool_steps"]
+        if not tool_steps:
+            return {"progress_made": True}
+
+        negative_count = 0
+        total_with_output = 0
+
+        for s in tool_steps:
+            output = json.dumps(s.get("outputs", {})).lower()
+            if not output:
+                continue
+            total_with_output += 1
+            if s.get("error") or any(m in output for m in
+                                     self.TOOL_SOFT_ERROR_MARKERS):
+                negative_count += 1
+
+        if total_with_output > 0 and negative_count == total_with_output:
+            return {"progress_made": False}
+
+        # Check repeated tool calls with all-negative results
+        name_counts = Counter(s["name"] for s in tool_steps)
+        if name_counts:
+            most_called_name, most_called_count = name_counts.most_common(1)[0]
+            if most_called_count >= 2:
+                outputs = [
+                    json.dumps(s.get("outputs", {})).lower()
+                    for s in tool_steps if s["name"] == most_called_name
+                ]
+                all_negative = all(
+                    any(m in o for m in self.TOOL_SOFT_ERROR_MARKERS)
+                    for o in outputs if o
+                )
+                if all_negative:
+                    return {"progress_made": False}
+
+        return {"progress_made": True}
+
+    def _extract_grounding(self, normalized: dict) -> dict:
+        """Assess evidence grounding quality of the response."""
+        tool_steps = normalized["tool_steps"]
+        response = normalized.get("response", "")
+
+        # Did any tool provide usable data?
+        tool_provided_data = False
+        source_data_length = 0
+        for s in tool_steps:
+            if s.get("error"):
+                continue
+            output_str = json.dumps(s.get("outputs", {}))
+            if not any(m in output_str.lower()
+                       for m in self.TOOL_SOFT_ERROR_MARKERS):
+                tool_provided_data = True
+                source_data_length += len(output_str)
+
+        # Did the response acknowledge uncertainty?
+        uncertainty_markers = [
+            "couldn't find", "could not find",
+            "unable to find", "unable to retrieve",
+            "no results", "no relevant results",
+            "wasn't able", "was not able",
+            "based on general", "based on historical",
+            "i don't have", "i do not have",
+            "may not accurately reflect",
+            "data is outdated", "outdated", "not current",
+            "approximately", "estimated",
+            "rough estimate", "general estimate",
+        ]
+        uncertainty_acknowledged = any(
+            m in response.lower() for m in uncertainty_markers
+        ) if response else False
+
+        response_length = len(response)
+        if source_data_length > 0:
+            expansion_ratio = round(response_length / source_data_length, 2)
+        else:
+            expansion_ratio = (
+                0.0 if response_length == 0 else float("inf")
+            )
+
+        return {
+            "tool_provided_data": tool_provided_data,
+            "uncertainty_acknowledged": uncertainty_acknowledged,
+            "response_length": response_length,
+            "source_data_length": source_data_length,
+            "expansion_ratio": expansion_ratio,
+        }
 
 
 # ---------------------------------------------------------------------------
