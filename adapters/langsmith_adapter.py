@@ -423,10 +423,13 @@ class LangSmithAdapter(BaseAdapter):
         """
         tool_runs = normalized["tool_runs"]
         if not tool_runs:
+            response = normalized.get("response", "")
             return {
                 "progress_made": True,
                 "tool_progress": {},
                 "any_tool_looping": False,
+                "output_produced": bool(response and len(response.strip()) > 0),
+                "chain_error_occurred": bool(normalized.get("error")),
             }
 
         negative_markers = self.TOOL_SOFT_ERROR_MARKERS
@@ -463,10 +466,16 @@ class LangSmithAdapter(BaseAdapter):
             tp["progress"] for tp in tool_progress.values()
         )
 
+        response = normalized.get("response", "")
+        output_produced = bool(response and len(response.strip()) > 0)
+        chain_error_occurred = bool(normalized.get("error"))
+
         return {
             "progress_made": progress_made,
             "tool_progress": tool_progress,
             "any_tool_looping": any_tool_looping,
+            "output_produced": output_produced,
+            "chain_error_occurred": chain_error_occurred,
         }
 
     def _extract_grounding(self, normalized: dict) -> dict:

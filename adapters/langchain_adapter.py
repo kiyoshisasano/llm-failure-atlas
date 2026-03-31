@@ -378,10 +378,13 @@ class LangChainAdapter(BaseAdapter):
         """
         tool_steps = normalized["tool_steps"]
         if not tool_steps:
+            response = normalized.get("response", "")
             return {
                 "progress_made": True,
                 "tool_progress": {},
                 "any_tool_looping": False,
+                "output_produced": bool(response and len(response.strip()) > 0),
+                "chain_error_occurred": False,
             }
 
         negative_markers = self.TOOL_SOFT_ERROR_MARKERS
@@ -418,10 +421,20 @@ class LangChainAdapter(BaseAdapter):
             tp["progress"] for tp in tool_progress.values()
         )
 
+        # Termination signals inferred from normalized trace
+        response = normalized.get("response", "")
+        output_produced = bool(response and len(response.strip()) > 0)
+        chain_error_occurred = any(
+            s.get("error") for s in normalized.get("steps", [])
+            if s.get("type") == "chain"
+        )
+
         return {
             "progress_made": progress_made,
             "tool_progress": tool_progress,
             "any_tool_looping": any_tool_looping,
+            "output_produced": output_produced,
+            "chain_error_occurred": chain_error_occurred,
         }
 
     def _extract_grounding(self, normalized: dict) -> dict:

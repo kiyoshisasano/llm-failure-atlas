@@ -660,6 +660,9 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 "progress_made": True,
                 "tool_progress": {},
                 "any_tool_looping": False,
+                "output_produced": bool(self._final_output and
+                                        len(self._final_output.strip()) > 0),
+                "chain_error_occurred": len(self._chain_errors) > 0,
             }
 
         negative_markers = self.TOOL_SOFT_ERROR_MARKERS
@@ -704,6 +707,9 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "progress_made": progress_made,
             "tool_progress": tool_progress,
             "any_tool_looping": any_tool_looping,
+            "output_produced": bool(self._final_output and
+                                    len(self._final_output.strip()) > 0),
+            "chain_error_occurred": len(self._chain_errors) > 0,
         }
 
     def _compute_intent_sim(self) -> float:
