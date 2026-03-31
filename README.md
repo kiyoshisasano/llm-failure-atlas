@@ -216,7 +216,7 @@ Additional: 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PA
 
 **Redis Semantic Cache experiment:**
 
-Tested with a Redis RAG + Semantic Cache demo (8 seed/probe pairs). Observed a case where a cached response from one query was returned for a different-intent query, confirmed by answer_hash comparison. The current `semantic_cache_intent_bleeding` signal did not trigger in this case, suggesting that similarity-based signals may not fully capture cache reuse appropriateness in all situations. Further data collection is ongoing. See [SCIB Observation Results](docs/deep_analysis/scib_observation_results.md) for details.
+Tested with a Redis RAG + Semantic Cache demo (30 seed/probe pairs across 3 rounds, 15 cache hits observed). Cache reuse with different-intent queries occurred frequently. Similarity values for different-query and valid-rephrase cases overlapped, confirming that a single similarity threshold cannot reliably separate the two. The current `semantic_cache_intent_bleeding` signal did not trigger for any observed case. Detection improvement requires a secondary signal beyond similarity. See [SCIB Observation Results](docs/deep_analysis/scib_observation_results.md) for details.
 
 ---
 
@@ -286,7 +286,7 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://gi
 Some failure-like behaviors are observable but not yet diagnosable as failure patterns:
 
 - **Thin grounding** — the agent supplements sparse tool data with training knowledge without disclosure. Observable via `expansion_ratio`, but no threshold has been calibrated (insufficient data).
-- **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Observable in experiments, but the existing similarity-based signal does not trigger in all cases.
+- **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Tested with 30 seed/probe pairs; similarity ranges for valid and invalid reuse overlap, confirming that similarity alone is insufficient. Requires a secondary signal.
 - **Semantic mismatch** — a tool returns data for a completely different topic. Not detectable with current heuristics; requires embedding-based comparison (Layer 1 ML).
 
 These are tracked as observation gaps, not planned features. See [Failure Eligibility](docs/deep_analysis/failure_eligibility.md) for the conditions required to promote each to a diagnosable pattern.
