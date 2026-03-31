@@ -1,1 +1,31 @@
-{"scenario_id":"ambiguous_03","description":"Cache similarity at 0.84 (just below 0.85 threshold). retrieval_skipped_after_cache_hit should NOT fire.","category":"ambiguous","log":{"input":{"ambiguity_score":0.8},"interaction":{"clarification_triggered":false,"user_correction_detected":true},"reasoning":{"replanned":false},"cache":{"hit":true,"similarity":0.84,"query_intent_similarity":0.6},"retrieval":{"skipped":true},"response":{"alignment_score":0.3}}}
+{
+  "scenario_id": "ambiguous_03",
+  "description": "Cache similarity at 0.84 (just below 0.85 threshold). retrieval_skipped_after_cache_hit should NOT fire.",
+  "category": "ambiguous",
+  "log": {
+    "input": {
+      "ambiguity_score": 0.8
+    },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": true
+    },
+    "reasoning": {
+      "replanned": false
+    },
+    "cache": {
+      "hit": true,
+      "similarity": 0.84,
+      "query_intent_similarity": 0.6
+    },
+    "retrieval": {
+      "skipped": true
+    },
+    "response": {
+      "alignment_score": 0.3
+    },
+    "state": {
+      "any_tool_looping": false
+    }
+  }
+}

@@ -3,18 +3,29 @@
   "description": "Cache hit with high similarity but output is fine. Tests if system avoids false positive when alignment is good.",
   "category": "false_positive",
   "log": {
-    "input": { "ambiguity_score": 0.4 },
+    "input": {
+      "ambiguity_score": 0.4
+    },
     "interaction": {
       "clarification_triggered": false,
       "user_correction_detected": false
     },
-    "reasoning": { "replanned": false },
+    "reasoning": {
+      "replanned": false
+    },
     "cache": {
       "hit": true,
       "similarity": 0.95,
       "query_intent_similarity": 0.6
     },
-    "retrieval": { "skipped": true },
-    "response": { "alignment_score": 0.8 }
+    "retrieval": {
+      "skipped": true
+    },
+    "response": {
+      "alignment_score": 0.8
+    },
+    "state": {
+      "any_tool_looping": false
+    }
   }
 }

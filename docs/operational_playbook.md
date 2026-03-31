@@ -34,9 +34,10 @@ For concrete examples of each pattern, see [Applied Debugging Examples](applied_
 **Detection condition:**
 
 ```
-tools.repeat_count >= 2
-state.progress_made == False
+state.any_tool_looping == True
 ```
+
+This fires when any single tool was called 3+ times with zero successes (per-tool evaluation). Unlike the previous global `progress_made` check, this correctly detects a looping tool even when other tools succeed in the same run.
 
 **Classification:** Failure (`agent_tool_call_loop`)
 
@@ -48,8 +49,8 @@ Apply the recommended patch: `max_repeat_calls: 3` + `require_progress_between_c
 
 **Confidence requirements:**
 
-- `tools.repeat_count` is directly observed (reliable)
-- `state.progress_made` uses soft error markers (reliable for error strings, may miss subtle failures)
+- `state.any_tool_looping` is derived from per-tool call/success counts (reliable)
+- Tool output classification uses soft error markers (reliable for error strings, may miss subtle failures)
 - `tools.soft_error_count` distinguishes real errors from retries on valid-but-empty results
 
 ---
@@ -264,7 +265,7 @@ Some applications implement guardrails that block off-topic queries before they 
 
 | Pattern | Classification | Action | Key Signal |
 |---|---|---|---|
-| Tool call loop | Failure | Fix | `tools.repeat_count >= 2` + `progress_made=False` |
+| Tool call loop | Failure | Fix | `state.any_tool_looping == True` (per-tool: 3+ calls, 0 successes) |
 | No data + disclosed | Acceptable | Ignore | `tool_provided_data=False` + `uncertainty_acknowledged=True` |
 | No data + not disclosed | Risk | Block | `tool_provided_data=False` + `uncertainty_acknowledged=False` |
 | Thin grounding | Risk | Monitor | `expansion_ratio > 5` + `uncertainty_acknowledged=False` |

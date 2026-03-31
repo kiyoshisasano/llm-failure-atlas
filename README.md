@@ -187,7 +187,8 @@ The callback handler infers telemetry fields not directly observable from agent 
 | `input.ambiguity_score` | Word count + pronoun/vague term detection |
 | `interaction.user_correction_detected` | Response admits failure + pivots to different topic |
 | `response.alignment_score` | Word overlap - topic mismatch penalty - negation penalty |
-| `state.progress_made` | All tool outputs contain negative/error markers |
+| `state.progress_made` | Any tool returned non-error output |
+| `state.any_tool_looping` | Any tool called 3+ times with zero successes (per-tool evaluation) |
 | `tools.soft_error_count` | Tool output text contains error/empty markers |
 | `tools.error_count` | Tool-level exceptions (HTTP errors, timeouts, MCP failures) |
 | `tools.hard_error_detected` | True if any tool raised an exception (vs returning empty) |
@@ -255,7 +256,7 @@ class MyAdapter(BaseAdapter):
             "retrieval": {"skipped": ...},
             "response": {"alignment_score": ...},
             "tools": {"call_count": ..., "repeat_count": ..., "soft_error_count": ...},
-            "state": {"progress_made": ...},
+            "state": {"progress_made": ..., "any_tool_looping": ...},
             "grounding": {"tool_provided_data": ..., "uncertainty_acknowledged": ...,
                           "response_length": ..., "source_data_length": ...,
                           "expansion_ratio": ...},
@@ -313,6 +314,11 @@ These are tracked as observation gaps, not planned features. See [Failure Eligib
 
 - **Soft error detection** — tool output is scanned for keywords ("error", "not found", "empty", etc.) to infer whether the tool returned usable data. Normal output that incidentally contains these words in a different context may be misclassified. If this causes false positives for your domain, review `TOOL_SOFT_ERROR_MARKERS` in the adapter you are using.
 - **Model context limits** — context truncation risk is estimated using hardcoded token limits per model (`MODEL_CONTEXT_LIMITS` in `callback_handler.py`). New models require a manual update to this dictionary. If a model is not listed, truncation detection is skipped rather than guessed.
+- **Adapter-dependent patterns** — some patterns (e.g., `tool_result_misinterpretation`) require telemetry fields (`tool.output_valid`, `state.updated_correctly`) that no adapter currently produces. These patterns exist in the taxonomy but will not fire until an adapter emits the required fields.
+
+**Design boundary — state telemetry:**
+
+The `state` section in telemetry contains local aggregations (per-tool call counts, success/failure counts) and their direct derivations (`any_tool_looping`, `progress_made`). It does not contain cross-pattern logic, causal inference, or multi-step reasoning. These belong in the matcher and debugger pipeline, not in the adapter.
 
 ---
 

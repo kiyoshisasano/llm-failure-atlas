@@ -413,39 +413,61 @@ class LangSmithAdapter(BaseAdapter):
 
         return round(min(1.0, overlap), 2)
 
+    LOOP_THRESHOLD = 3
+
     def _extract_state(self, normalized: dict) -> dict:
-        """Infer state.progress_made from tool results."""
+        """Infer execution state from tool results.
+
+        Produces per-tool progress breakdown and loop detection.
+        See callback_handler._build_state for full documentation.
+        """
         tool_runs = normalized["tool_runs"]
         if not tool_runs:
-            return {"progress_made": True}
+            return {
+                "progress_made": True,
+                "tool_progress": {},
+                "any_tool_looping": False,
+            }
 
-        negative_count = 0
-        total_with_output = 0
+        negative_markers = self.TOOL_SOFT_ERROR_MARKERS
+
+        tool_progress = {}
         for r in tool_runs:
+            name = r.get("name", "unknown")
+            if name not in tool_progress:
+                tool_progress[name] = {
+                    "calls": 0, "successes": 0, "failures": 0,
+                    "progress": False,
+                }
+            entry = tool_progress[name]
+            entry["calls"] += 1
+
             output = json.dumps(r.get("outputs", {})).lower()
-            if not output:
-                continue
-            total_with_output += 1
-            if r.get("error") or any(m in output
-                                     for m in self.TOOL_SOFT_ERROR_MARKERS):
-                negative_count += 1
+            is_failure = bool(r.get("error")) or (
+                bool(output)
+                and any(m in output for m in negative_markers)
+            )
 
-        if total_with_output > 0 and negative_count == total_with_output:
-            return {"progress_made": False}
+            if is_failure:
+                entry["failures"] += 1
+            elif output:
+                entry["successes"] += 1
+                entry["progress"] = True
 
-        name_counts = Counter(r["name"] for r in tool_runs)
-        if name_counts:
-            most_called_name, most_called_count = name_counts.most_common(1)[0]
-            if most_called_count >= 2:
-                outputs = [
-                    json.dumps(r.get("outputs", {})).lower()
-                    for r in tool_runs if r["name"] == most_called_name
-                ]
-                if all(any(m in o for m in self.TOOL_SOFT_ERROR_MARKERS)
-                       for o in outputs if o):
-                    return {"progress_made": False}
+        any_tool_looping = any(
+            tp["calls"] >= self.LOOP_THRESHOLD and tp["successes"] == 0
+            for tp in tool_progress.values()
+        )
 
-        return {"progress_made": True}
+        progress_made = any(
+            tp["progress"] for tp in tool_progress.values()
+        )
+
+        return {
+            "progress_made": progress_made,
+            "tool_progress": tool_progress,
+            "any_tool_looping": any_tool_looping,
+        }
 
     def _extract_grounding(self, normalized: dict) -> dict:
         """Assess evidence grounding quality of the response."""

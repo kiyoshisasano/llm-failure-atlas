@@ -16,7 +16,8 @@
     },
     "state": {
       "progress_made": false,
-      "updated_correctly": false
+      "updated_correctly": false,
+      "any_tool_looping": true
     },
     "tool": {
       "output_valid": true,

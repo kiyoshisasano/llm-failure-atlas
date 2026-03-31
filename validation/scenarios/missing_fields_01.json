@@ -3,7 +3,14 @@
   "description": "Incomplete telemetry. Only input and response fields present. Tests graceful degradation.",
   "category": "missing_fields",
   "log": {
-    "input": { "ambiguity_score": 0.8 },
-    "response": { "alignment_score": 0.2 }
+    "input": {
+      "ambiguity_score": 0.8
+    },
+    "response": {
+      "alignment_score": 0.2
+    },
+    "state": {
+      "any_tool_looping": false
+    }
   }
 }

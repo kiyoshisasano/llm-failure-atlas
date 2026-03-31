@@ -1,1 +1,35 @@
-{"scenario_id":"tool_failure_03","description":"Tool loop with misinterpretation but no PMC (low ambiguity, no correction).","category":"tool_failure","log":{"input":{"ambiguity_score":0.3},"interaction":{"clarification_triggered":false,"user_correction_detected":false},"reasoning":{"replanned":false},"tools":{"repeat_count":5},"state":{"progress_made":false,"updated_correctly":false},"tool":{"output_valid":true,"output_value":"200"},"agent":{"decision_value":"retry"},"response":{"alignment_score":0.5}}}
+{
+  "scenario_id": "tool_failure_03",
+  "description": "Tool loop with misinterpretation but no PMC (low ambiguity, no correction).",
+  "category": "tool_failure",
+  "log": {
+    "input": {
+      "ambiguity_score": 0.3
+    },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": false
+    },
+    "reasoning": {
+      "replanned": false
+    },
+    "tools": {
+      "repeat_count": 5
+    },
+    "state": {
+      "progress_made": false,
+      "updated_correctly": false,
+      "any_tool_looping": true
+    },
+    "tool": {
+      "output_valid": true,
+      "output_value": "200"
+    },
+    "agent": {
+      "decision_value": "retry"
+    },
+    "response": {
+      "alignment_score": 0.5
+    }
+  }
+}

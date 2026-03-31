@@ -1,1 +1,31 @@
-{"scenario_id":"clean_03","description":"Moderate ambiguity but clarification triggered and replanned. Should be clean.","category":"clean","log":{"input":{"ambiguity_score":0.7},"interaction":{"clarification_triggered":true,"user_correction_detected":false},"reasoning":{"replanned":true},"cache":{"hit":false,"similarity":0.4,"query_intent_similarity":0.85},"retrieval":{"skipped":false},"response":{"alignment_score":0.75}}}
+{
+  "scenario_id": "clean_03",
+  "description": "Moderate ambiguity but clarification triggered and replanned. Should be clean.",
+  "category": "clean",
+  "log": {
+    "input": {
+      "ambiguity_score": 0.7
+    },
+    "interaction": {
+      "clarification_triggered": true,
+      "user_correction_detected": false
+    },
+    "reasoning": {
+      "replanned": true
+    },
+    "cache": {
+      "hit": false,
+      "similarity": 0.4,
+      "query_intent_similarity": 0.85
+    },
+    "retrieval": {
+      "skipped": false
+    },
+    "response": {
+      "alignment_score": 0.75
+    },
+    "state": {
+      "any_tool_looping": false
+    }
+  }
+}

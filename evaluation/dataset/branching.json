@@ -26,7 +26,8 @@
       "repeat_count": 4
     },
     "state": {
-      "progress_made": false
+      "progress_made": false,
+      "any_tool_looping": true
     }
   },
   "matcher_output": [

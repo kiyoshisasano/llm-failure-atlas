@@ -3,18 +3,29 @@
   "description": "Borderline values. Ambiguity at exactly 0.7, cache similarity at exactly 0.85. Tests threshold behavior.",
   "category": "ambiguous",
   "log": {
-    "input": { "ambiguity_score": 0.7 },
+    "input": {
+      "ambiguity_score": 0.7
+    },
     "interaction": {
       "clarification_triggered": false,
       "user_correction_detected": true
     },
-    "reasoning": { "replanned": false },
+    "reasoning": {
+      "replanned": false
+    },
     "cache": {
       "hit": true,
       "similarity": 0.85,
       "query_intent_similarity": 0.75
     },
-    "retrieval": { "skipped": true },
-    "response": { "alignment_score": 0.5 }
+    "retrieval": {
+      "skipped": true
+    },
+    "response": {
+      "alignment_score": 0.5
+    },
+    "state": {
+      "any_tool_looping": false
+    }
   }
 }

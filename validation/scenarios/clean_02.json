@@ -1,1 +1,31 @@
-{"scenario_id":"clean_02","description":"Low ambiguity, no cache, good alignment. Clean scenario variant.","category":"clean","log":{"input":{"ambiguity_score":0.1},"interaction":{"clarification_triggered":false,"user_correction_detected":false},"reasoning":{"replanned":false},"cache":{"hit":false,"similarity":0.2,"query_intent_similarity":0.95},"retrieval":{"skipped":false},"response":{"alignment_score":0.9}}}
+{
+  "scenario_id": "clean_02",
+  "description": "Low ambiguity, no cache, good alignment. Clean scenario variant.",
+  "category": "clean",
+  "log": {
+    "input": {
+      "ambiguity_score": 0.1
+    },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": false
+    },
+    "reasoning": {
+      "replanned": false
+    },
+    "cache": {
+      "hit": false,
+      "similarity": 0.2,
+      "query_intent_similarity": 0.95
+    },
+    "retrieval": {
+      "skipped": false
+    },
+    "response": {
+      "alignment_score": 0.9
+    },
+    "state": {
+      "any_tool_looping": false
+    }
+  }
+}

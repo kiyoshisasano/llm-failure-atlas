@@ -1,5 +1,7 @@
 {
-  "input": { "ambiguity_score": 0.8 },
+  "input": {
+    "ambiguity_score": 0.8
+  },
   "interaction": {
     "clarification_triggered": false,
     "user_correction_detected": true
@@ -15,6 +17,13 @@
     "similarity": 0.89,
     "query_intent_similarity": 0.61
   },
-  "retrieval": { "skipped": true },
-  "response": { "alignment_score": 0.3 }
+  "retrieval": {
+    "skipped": true
+  },
+  "response": {
+    "alignment_score": 0.3
+  },
+  "state": {
+    "any_tool_looping": false
+  }
 }

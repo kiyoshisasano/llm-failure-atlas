@@ -21,6 +21,9 @@
     },
     "response": {
       "alignment_score": 0.3
+    },
+    "state": {
+      "any_tool_looping": false
     }
   },
   "matcher_output": [

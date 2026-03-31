@@ -1,1 +1,31 @@
-{"scenario_id":"false_positive_02","description":"High alignment (0.9) with some cache signals. Zero failures expected.","category":"false_positive","log":{"input":{"ambiguity_score":0.5},"interaction":{"clarification_triggered":false,"user_correction_detected":false},"reasoning":{"replanned":false},"cache":{"hit":true,"similarity":0.88,"query_intent_similarity":0.7},"retrieval":{"skipped":true},"response":{"alignment_score":0.9}}}
+{
+  "scenario_id": "false_positive_02",
+  "description": "High alignment (0.9) with some cache signals. Zero failures expected.",
+  "category": "false_positive",
+  "log": {
+    "input": {
+      "ambiguity_score": 0.5
+    },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": false
+    },
+    "reasoning": {
+      "replanned": false
+    },
+    "cache": {
+      "hit": true,
+      "similarity": 0.88,
+      "query_intent_similarity": 0.7
+    },
+    "retrieval": {
+      "skipped": true
+    },
+    "response": {
+      "alignment_score": 0.9
+    },
+    "state": {
+      "any_tool_looping": false
+    }
+  }
+}

@@ -3,7 +3,9 @@
   "description": "Many telemetry fields present. Risk of over-detection. Tool loop signals + cache signals + truncation signals all partially present.",
   "category": "over_detection",
   "log": {
-    "input": { "ambiguity_score": 0.65 },
+    "input": {
+      "ambiguity_score": 0.65
+    },
     "interaction": {
       "clarification_triggered": false,
       "user_correction_detected": true
@@ -27,8 +29,15 @@
       "truncated": true,
       "critical_info_present": false
     },
-    "tools": { "repeat_count": 2 },
-    "state": { "progress_made": true },
-    "response": { "alignment_score": 0.4 }
+    "tools": {
+      "repeat_count": 2
+    },
+    "state": {
+      "progress_made": true,
+      "any_tool_looping": false
+    },
+    "response": {
+      "alignment_score": 0.4
+    }
   }
 }

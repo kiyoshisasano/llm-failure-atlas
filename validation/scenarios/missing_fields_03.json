@@ -1,1 +1,20 @@
-{"scenario_id":"missing_fields_03","description":"Only tools fields present. Tests tool-only telemetry.","category":"missing_fields","log":{"tools":{"repeat_count":5},"state":{"progress_made":false},"reasoning":{"replanned":false},"response":{"alignment_score":0.4}}}
+{
+  "scenario_id": "missing_fields_03",
+  "description": "Only tools fields present. Tests tool-only telemetry.",
+  "category": "missing_fields",
+  "log": {
+    "tools": {
+      "repeat_count": 5
+    },
+    "state": {
+      "progress_made": false,
+      "any_tool_looping": true
+    },
+    "reasoning": {
+      "replanned": false
+    },
+    "response": {
+      "alignment_score": 0.4
+    }
+  }
+}

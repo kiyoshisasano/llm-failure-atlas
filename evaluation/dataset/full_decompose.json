@@ -18,6 +18,9 @@
       "repair_attempted": true,
       "regenerated": false,
       "repair_quality": 0.3
+    },
+    "state": {
+      "any_tool_looping": false
     }
   },
   "matcher_output": [

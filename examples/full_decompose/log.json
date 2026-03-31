@@ -1,5 +1,7 @@
 {
-  "input": { "ambiguity_score": 0.8 },
+  "input": {
+    "ambiguity_score": 0.8
+  },
   "interaction": {
     "clarification_triggered": false,
     "user_correction_detected": true
@@ -14,5 +16,8 @@
     "repair_attempted": true,
     "regenerated": false,
     "repair_quality": 0.3
+  },
+  "state": {
+    "any_tool_looping": false
   }
 }

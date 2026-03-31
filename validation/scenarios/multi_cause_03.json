@@ -1,1 +1,35 @@
-{"scenario_id":"multi_cause_03","description":"SCIB + tool_loop from same PMC root. Tests diverging downstream paths.","category":"multi_cause","log":{"input":{"ambiguity_score":0.8},"interaction":{"clarification_triggered":false,"user_correction_detected":true},"reasoning":{"replanned":false},"cache":{"hit":true,"similarity":0.91,"query_intent_similarity":0.55},"retrieval":{"skipped":true},"tools":{"repeat_count":4},"state":{"progress_made":false},"response":{"alignment_score":0.3}}}
+{
+  "scenario_id": "multi_cause_03",
+  "description": "SCIB + tool_loop from same PMC root. Tests diverging downstream paths.",
+  "category": "multi_cause",
+  "log": {
+    "input": {
+      "ambiguity_score": 0.8
+    },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": true
+    },
+    "reasoning": {
+      "replanned": false
+    },
+    "cache": {
+      "hit": true,
+      "similarity": 0.91,
+      "query_intent_similarity": 0.55
+    },
+    "retrieval": {
+      "skipped": true
+    },
+    "tools": {
+      "repeat_count": 4
+    },
+    "state": {
+      "progress_made": false,
+      "any_tool_looping": true
+    },
+    "response": {
+      "alignment_score": 0.3
+    }
+  }
+}

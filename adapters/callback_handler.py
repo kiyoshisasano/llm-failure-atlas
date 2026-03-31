@@ -641,45 +641,70 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "hard_error_detected": error_count > 0,
         }
 
+    # Minimum repeat count to consider a tool as looping.
+    LOOP_THRESHOLD = 3
+
     def _build_state(self) -> dict:
-        """Infer state.progress_made from tool results."""
+        """Infer execution state from tool results.
+
+        Produces:
+          progress_made: bool — backward compatible, True if any tool
+              produced usable output.
+          tool_progress: dict — per-tool breakdown of calls, successes,
+              failures, and progress status.
+          any_tool_looping: bool — True if any single tool was called
+              LOOP_THRESHOLD+ times with zero successes.
+        """
         if not self._tool_calls:
-            return {"progress_made": True}
+            return {
+                "progress_made": True,
+                "tool_progress": {},
+                "any_tool_looping": False,
+            }
 
-        # Check ALL tool calls (not just repeated ones) for negative results.
-        # A single tool call returning empty/error also means no progress
-        # on the data-gathering front.
         negative_markers = self.TOOL_SOFT_ERROR_MARKERS
-        negative_count = 0
-        total_with_output = 0
 
+        # Build per-tool progress
+        tool_progress = {}
         for c in self._tool_calls:
+            name = c.get("name", "unknown")
+            if name not in tool_progress:
+                tool_progress[name] = {
+                    "calls": 0, "successes": 0, "failures": 0,
+                    "progress": False,
+                }
+            entry = tool_progress[name]
+            entry["calls"] += 1
+
             output = str(c.get("output", "")).lower()
-            if not output:
-                continue
-            total_with_output += 1
-            if c.get("error") or any(m in output for m in negative_markers):
-                negative_count += 1
-
-        # If all tool outputs are negative/error, no progress was made
-        if total_with_output > 0 and negative_count == total_with_output:
-            return {"progress_made": False}
-
-        # If repeated tool calls all return similar negative results, no progress
-        name_counts = Counter(c["name"] for c in self._tool_calls)
-        most_called = name_counts.most_common(1)[0] if name_counts else None
-
-        if most_called and most_called[1] >= 2:
-            tool_name = most_called[0]
-            outputs = [c.get("output", "") for c in self._tool_calls if c["name"] == tool_name]
-            all_negative = all(
-                any(m in str(o).lower() for m in negative_markers)
-                for o in outputs if o
+            is_failure = bool(c.get("error")) or (
+                bool(output)
+                and any(m in output for m in negative_markers)
             )
-            if all_negative:
-                return {"progress_made": False}
 
-        return {"progress_made": True}
+            if is_failure:
+                entry["failures"] += 1
+            elif output:
+                entry["successes"] += 1
+                entry["progress"] = True
+
+        # any_tool_looping: any tool called LOOP_THRESHOLD+ times
+        # with zero successes
+        any_tool_looping = any(
+            tp["calls"] >= self.LOOP_THRESHOLD and tp["successes"] == 0
+            for tp in tool_progress.values()
+        )
+
+        # progress_made: backward compatible — True if any tool made progress
+        progress_made = any(
+            tp["progress"] for tp in tool_progress.values()
+        )
+
+        return {
+            "progress_made": progress_made,
+            "tool_progress": tool_progress,
+            "any_tool_looping": any_tool_looping,
+        }
 
     def _compute_intent_sim(self) -> float:
         query = self._user_input.lower()

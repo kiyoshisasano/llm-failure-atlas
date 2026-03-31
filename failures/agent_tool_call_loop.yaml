@@ -12,19 +12,25 @@ cogency_tags: [tool_failure]
 
 # Tool call loop telemetry contract
 # Required log fields:
-#   tools.repeat_count    int (>= 0)
-#   state.progress_made   bool
-#   reasoning.replanned   bool
+#   tools.repeat_count       int (>= 0)
+#   state.progress_made      bool (backward compatible)
+#   state.any_tool_looping   bool (per-tool loop detection)
+#   reasoning.replanned      bool
 #
 # Temporal semantics:
-#   tools.repeat_count counts same-name tool invocations within a turn.
-#   state.progress_made is False when the most-repeated tool's outputs
-#   are ALL negative (error/empty). This means progress is evaluated
-#   specifically for the looping tool, not globally. If a different tool
-#   succeeds but the repeated tool fails every time, progress_made=False.
+#   state.any_tool_looping is True when any single tool was called
+#   LOOP_THRESHOLD (3) or more times with zero successes. This is
+#   evaluated per-tool, not globally: if tool A loops but tool B
+#   succeeds, any_tool_looping is still True.
 #
 #   This provides temporal correlation without requiring event ordering:
-#   "the tool that looped did not make progress across its calls."
+#   "at least one tool was called repeatedly and never succeeded."
+#
+# Backward compatibility:
+#   state.progress_made is retained. The primary signal now uses
+#   state.any_tool_looping for more precise per-tool detection.
+#   If any_tool_looping is not available (older adapters),
+#   the fallback signal uses progress_made.
 
 signal_extraction:
 
@@ -35,10 +41,11 @@ signal_extraction:
   rules:
     - signal: repeated_tool_call_without_progress
       from:
-        - tools.repeat_count
-        - state.progress_made
-      rule: tools.repeat_count >= 3 and state.progress_made == false
-      comment: repeated tool invocation without meaningful progress
+        - state.any_tool_looping
+      rule: state.any_tool_looping == true
+      comment: >
+        at least one tool was called 3+ times with zero successes,
+        detected per-tool rather than globally
 
     - signal: no_replanning_before_repeat
       from:
@@ -52,11 +59,12 @@ diagnosis:
   threshold: 0.6
 
   # rationale:
-  # repetition alone may be valid in some workflows.
+  # per-tool looping alone may be valid in some workflows (retry policies).
   # lack of replanning alone does not imply looping.
-  # the failure requires repeated invocation plus lack of meaningful progress.
+  # the failure requires: a tool looped with no success AND the agent
+  # did not replan its approach.
   # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.6 → diagnosed
-  # confidence(repeat only) = 0.4 < 0.6 → not diagnosed
+  # confidence(loop only) = 0.4 < 0.6 → not diagnosed
   # confidence(no_replan only) = 0.3 < 0.6 → not diagnosed
 
   evidence_modifiers:
