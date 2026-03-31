@@ -337,6 +337,55 @@ edges:
       note: >
         Observable edge. Both nodes are now diagnosable.
 
+  # --- Termination edges ---
+
+  - id: E_tool_loop_to_premature_termination
+    from: agent_tool_call_loop
+    to: premature_termination
+    relation: induces
+    semantics:
+      description: >
+        Repeated tool invocation without progress can exhaust the
+        agent's execution budget, causing it to stop silently
+        without producing output.
+      conditions:
+        - repeated_tool_invocation_without_progress
+        - silent_exit_without_output
+      note: >
+        Observable edge. Both patterns use independent telemetry
+        fields (state.any_tool_looping vs state.output_produced).
+
+  - id: E_tool_loop_to_failed_termination
+    from: agent_tool_call_loop
+    to: failed_termination
+    relation: induces
+    semantics:
+      description: >
+        Repeated tool invocation without progress can trigger
+        execution errors (timeouts, rate limits, resource exhaustion)
+        that terminate the agent.
+      conditions:
+        - repeated_tool_invocation_without_progress
+        - execution_error_caused_termination
+      note: >
+        Observable edge. Tool loop signals (state.any_tool_looping)
+        and error signals (state.chain_error_occurred) are independent.
+
+  - id: E_repair_failure_to_failed_termination
+    from: repair_strategy_failure
+    to: failed_termination
+    relation: induces
+    semantics:
+      description: >
+        A failed repair attempt can raise an execution error that
+        terminates the agent without producing output.
+      conditions:
+        - output_patched_without_regeneration
+        - execution_error_caused_termination
+      note: >
+        Observable edge. Repair signals (output.repair_attempted)
+        and error signals (state.chain_error_occurred) are independent.
+
 
 # Relationships define semantic constraints between failures.
 # These are NOT used for diagnosis — only for explanation and conflict resolution.
