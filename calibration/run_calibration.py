@@ -29,12 +29,12 @@ SCIB_REQUIRED_EXAMPLES = [
 
 
 def load_baseline():
-    with open(SCIB_PATH) as f:
+    with open(SCIB_PATH, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def save_pattern(pattern):
-    with open(SCIB_PATH, "w") as f:
+    with open(SCIB_PATH, "w", encoding="utf-8") as f:
         yaml.dump(pattern, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
 
@@ -78,7 +78,7 @@ def run_eval_suite():
 
     annotations = {}
     for path in annotations_dir.glob("*.json"):
-        ann = json.load(open(path))
+        ann = json.load(open(path, encoding="utf-8"))
         annotations[ann["scenario_id"]] = ann
 
     total = 0
@@ -88,7 +88,7 @@ def run_eval_suite():
     annotated_count = 0
 
     for spath in sorted(scenarios_dir.glob("*.json")):
-        scenario = json.load(open(spath))
+        scenario = json.load(open(spath, encoding="utf-8"))
         sid = scenario["scenario_id"]
         category = scenario.get("category", "")
         log = scenario["log"]

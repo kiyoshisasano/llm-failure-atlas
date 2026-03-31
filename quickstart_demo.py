@@ -47,7 +47,7 @@ def main():
         print("   Make sure you're running from the llm-failure-atlas root.")
         sys.exit(1)
 
-    with open(SAMPLE_TRACE) as f:
+    with open(SAMPLE_TRACE, encoding="utf-8") as f:
         raw_trace = json.load(f)
 
     print(f"  Source: {SAMPLE_TRACE.name}")
@@ -77,7 +77,7 @@ def main():
     # Save adapted log for matcher
     import tempfile
     tmp_log = Path(tempfile.gettempdir()) / "quickstart_adapted.json"
-    with open(tmp_log, "w") as f:
+    with open(tmp_log, "w", encoding="utf-8") as f:
         json.dump(matcher_input, f)
 
     diagnosed = []

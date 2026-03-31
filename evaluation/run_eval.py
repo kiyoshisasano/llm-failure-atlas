@@ -28,7 +28,7 @@ def load_dataset(dataset_dir: str) -> list[dict]:
     """Load all evaluation cases from a directory."""
     cases = []
     for path in sorted(Path(dataset_dir).glob("*.json")):
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             cases.append(json.load(f))
     return cases
 

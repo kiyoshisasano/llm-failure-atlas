@@ -54,14 +54,14 @@ WINDOW_SIZE = 30  # rolling window for KPIs
 
 def _load_json(path: str):
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
 def _save_json(path: str, data):
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 
@@ -358,7 +358,7 @@ def main():
         if not args:
             print("Usage: python compute_kpi.py --record run.json")
             sys.exit(1)
-        with open(args[0]) as f:
+        with open(args[0], encoding="utf-8") as f:
             run_data = json.load(f)
         record_run(
             root=run_data["root"],

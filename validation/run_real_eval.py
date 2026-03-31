@@ -131,7 +131,7 @@ def load_annotations(annotations_dir: Path) -> dict:
     """Load human annotations keyed by scenario_id."""
     annotations = {}
     for path in annotations_dir.glob("*.json"):
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             ann = json.load(f)
             annotations[ann["scenario_id"]] = ann
     return annotations
@@ -236,7 +236,7 @@ def main():
     # Load scenarios
     scenarios = []
     for path in sorted(scenarios_dir.glob("*.json")):
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             scenarios.append(json.load(f))
 
     if not scenarios:
@@ -346,7 +346,7 @@ def main():
 
     # Write errors.json
     errors_path = VALIDATION_DIR / "errors.json"
-    with open(errors_path, "w") as f:
+    with open(errors_path, "w", encoding="utf-8") as f:
         json.dump(all_errors, f, indent=2)
 
     print(json.dumps(summary, indent=2))

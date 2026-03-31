@@ -33,13 +33,13 @@ SUGGESTIONS_PATH = LEARNING_DIR / "suggestions.json"
 
 def _load_store(path: Path) -> dict:
     if path.exists():
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     return {}
 
 
 def _save_store(path: Path, data: dict):
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 
@@ -239,9 +239,9 @@ def generate_suggestions(calibration: dict, effectiveness: dict) -> dict:
 
 def update(errors_path: str, eval_report_path: str) -> dict:
     """Full learning cycle: read inputs → update stores → generate suggestions."""
-    with open(errors_path) as f:
+    with open(errors_path, encoding="utf-8") as f:
         errors = json.load(f)
-    with open(eval_report_path) as f:
+    with open(eval_report_path, encoding="utf-8") as f:
         eval_report = json.load(f)
 
     calibration = update_calibration_history(errors)

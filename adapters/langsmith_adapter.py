@@ -333,7 +333,7 @@ def main():
         print("Usage: python langsmith_adapter.py trace.json [--with-metadata]")
         sys.exit(1)
 
-    with open(args[0]) as f:
+    with open(args[0], encoding="utf-8") as f:
         raw_log = json.load(f)
 
     adapter = LangSmithAdapter()
