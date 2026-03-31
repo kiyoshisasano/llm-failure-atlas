@@ -30,6 +30,28 @@ SUGGESTIONS_PATH = Path(LEARNING_DIR) / "suggestions.json"
 
 
 # ---------------------------------------------------------------------------
+# Optional AUTOFIX_MAP access (soft dependency on debugger)
+# ---------------------------------------------------------------------------
+
+_autofix_map = None
+
+def _get_autofix_field(failure_id: str, field: str, default=None):
+    """Look up a field from AUTOFIX_MAP without hard-importing debugger.
+
+    Caches the import result so that a missing debugger package is only
+    tried once per process.
+    """
+    global _autofix_map
+    if _autofix_map is None:
+        try:
+            from agent_failure_debugger.fix_templates import AUTOFIX_MAP
+            _autofix_map = AUTOFIX_MAP
+        except ImportError:
+            _autofix_map = {}
+    return _autofix_map.get(failure_id, {}).get(field, default)
+
+
+# ---------------------------------------------------------------------------
 # Store I/O
 # ---------------------------------------------------------------------------
 
@@ -129,11 +151,7 @@ def update_fix_effectiveness(eval_report: dict) -> dict:
             store[fid] = {}
 
         # Determine fix_type from AUTOFIX_MAP if available
-        try:
-            from agent_failure_debugger.fix_templates import AUTOFIX_MAP
-            fix_type = AUTOFIX_MAP.get(fid, {}).get("fix_type", "unknown")
-        except ImportError:
-            fix_type = "unknown"
+        fix_type = _get_autofix_field(fid, "fix_type", "unknown")
 
         if fix_type not in store[fid]:
             store[fid][fix_type] = {
@@ -218,18 +236,14 @@ def generate_suggestions(calibration: dict, effectiveness: dict) -> dict:
             attempts = data.get("attempts", 0)
             rollbacks = data.get("rollback", 0)
             if attempts >= 5 and rollbacks == 0:
-                try:
-                    from agent_failure_debugger.fix_templates import AUTOFIX_MAP
-                    current_safety = AUTOFIX_MAP.get(fid, {}).get("safety")
-                    if current_safety == "medium":
-                        suggestions["safety_promotions"].append({
-                            "failure": fid,
-                            "fix_type": fix_type,
-                            "action": f"Consider promoting {fid} safety from medium to high",
-                            "reason": f"{attempts} attempts with 0 rollbacks",
-                        })
-                except ImportError:
-                    pass
+                current_safety = _get_autofix_field(fid, "safety")
+                if current_safety == "medium":
+                    suggestions["safety_promotions"].append({
+                        "failure": fid,
+                        "fix_type": fix_type,
+                        "action": f"Consider promoting {fid} safety from medium to high",
+                        "reason": f"{attempts} attempts with 0 rollbacks",
+                    })
 
     _save_store(SUGGESTIONS_PATH, suggestions)
     return suggestions

@@ -231,10 +231,12 @@ if HAS_CREWAI:
 
         def __init__(self, auto_diagnose: bool = False,
                      auto_pipeline: bool = False,
+                     pipeline_callback=None,
                      verbose: bool = True):
             super().__init__()
             self.auto_diagnose = auto_diagnose
             self.auto_pipeline = auto_pipeline
+            self._pipeline_callback = pipeline_callback
             self.verbose = verbose
             self._reset_state()
 
@@ -573,19 +575,29 @@ if HAS_CREWAI:
                     print(f"\n⚠ Atlas diagnosis unavailable: {e}")
 
         def _run_pipeline(self, diagnosed: list):
+            callback = self._pipeline_callback
+            if callback is None:
+                try:
+                    from agent_failure_debugger.pipeline import run_pipeline
+                    callback = lambda d: run_pipeline(d, use_learning=True, top_k=1)
+                except ImportError:
+                    if self.verbose:
+                        print("\n⚠ Debugger pipeline unavailable: "
+                              "install agent-failure-debugger or provide pipeline_callback")
+                    return
+
             try:
-                from agent_failure_debugger.pipeline import run_pipeline
-                result = run_pipeline(diagnosed, use_learning=True, top_k=1)
+                result = callback(diagnosed)
                 self.last_pipeline_result = result
-                s = result["summary"]
+                s = result.get("summary", {})
                 if self.verbose:
-                    print(f"\n  Root cause:  {s['root_cause']} (conf={s['root_confidence']})")
-                    print(f"  Failures:    {s['failure_count']}")
-                    print(f"  Fixes:       {s['fix_count']}")
-                    print(f"  Gate:        {s['gate_mode']} (score={s['gate_score']})")
-            except ImportError as e:
+                    print(f"\n  Root cause:  {s.get('root_cause', '-')} (conf={s.get('root_confidence', '-')})")
+                    print(f"  Failures:    {s.get('failure_count', '-')}")
+                    print(f"  Fixes:       {s.get('fix_count', '-')}")
+                    print(f"  Gate:        {s.get('gate_mode', '-')} (score={s.get('gate_score', '-')})")
+            except Exception as e:
                 if self.verbose:
-                    print(f"\n⚠ Debugger pipeline unavailable: {e}")
+                    print(f"\n⚠ Pipeline execution failed: {e}")
 
         def get_events(self) -> dict:
             return {
