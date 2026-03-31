@@ -21,16 +21,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install package (editable)
+        run: pip install -e .
 
       - name: Validate all failure patterns (YAML)
         run: |
           python -c "
           import yaml
+          from llm_failure_atlas.resource_loader import get_patterns_dir
           from pathlib import Path
           errors = []
-          for f in sorted(Path('failures').glob('*.yaml')):
+          patterns_dir = Path(get_patterns_dir())
+          for f in sorted(patterns_dir.glob('*.yaml')):
               try:
                   p = yaml.safe_load(f.read_text(encoding='utf-8'))
                   assert 'failure_id' in p, f'missing failure_id in {f.name}'
@@ -41,14 +43,15 @@ jobs:
           if errors:
               for e in errors: print(f'FAIL: {e}')
               exit(1)
-          print(f'OK: {len(list(Path(\"failures\").glob(\"*.yaml\")))} patterns validated')
+          print(f'OK: {len(list(patterns_dir.glob(\"*.yaml\")))} patterns validated')
           "
 
       - name: Validate failure graph
         run: |
           python -c "
           import yaml
-          g = yaml.safe_load(open('failure_graph.yaml', encoding='utf-8'))
+          from llm_failure_atlas.resource_loader import get_graph_path
+          g = yaml.safe_load(open(str(get_graph_path()), encoding='utf-8'))
           nodes = {n['id'] for n in g['nodes']}
           edges = g['edges']
           for e in edges:
@@ -61,9 +64,10 @@ jobs:
         run: |
           python -c "
           import yaml
+          from llm_failure_atlas.resource_loader import get_patterns_dir
           from pathlib import Path
           signals = {}
-          for f in sorted(Path('failures').glob('*.yaml')):
+          for f in sorted(Path(get_patterns_dir()).glob('*.yaml')):
               p = yaml.safe_load(f.read_text(encoding='utf-8'))
               for rule in p.get('signal_extraction', {}).get('rules', []):
                   sig = rule['signal']
@@ -82,14 +86,16 @@ jobs:
       - name: Run matcher on sample trace
         run: |
           python -c "
-          import sys, json
-          sys.path.insert(0, 'adapters')
-          from langchain_adapter import LangChainAdapter
-          from matcher import run
+          import json
           from pathlib import Path
+          from llm_failure_atlas.adapters.langchain_adapter import LangChainAdapter
+          from llm_failure_atlas.matcher import run
+          from llm_failure_atlas.resource_loader import get_patterns_dir
+          import importlib.resources as ir
 
-          # Adapt raw trace to matcher input
-          with open('adapters/sample_langchain_trace.json') as f:
+          # Load sample trace from package
+          sample_path = ir.files('llm_failure_atlas.adapters').joinpath('sample_langchain_trace.json')
+          with open(str(sample_path)) as f:
               raw = json.load(f)
           adapter = LangChainAdapter()
           telemetry = adapter.build_matcher_input(raw)
@@ -101,7 +107,7 @@ jobs:
 
           # Run all patterns
           diagnosed = []
-          for pf in sorted(Path('failures').glob('*.yaml')):
+          for pf in sorted(Path(get_patterns_dir()).glob('*.yaml')):
               r = run(str(pf), tmp)
               if r.get('diagnosed'):
                   diagnosed.append(r['failure_id'])
@@ -109,8 +115,8 @@ jobs:
           assert len(diagnosed) >= 1, 'Expected at least 1 failure from sample trace'
           "
 
-      - name: Run adapter tests
-        run: |
-          python adapters/langchain_adapter.py adapters/sample_langchain_trace.json > /dev/null
-          python adapters/langsmith_adapter.py adapters/sample_langsmith_trace.json > /dev/null
-          echo "OK: both adapters passed"
+      - name: Run mutation testing
+        run: python evaluation/mutation_eval.py
+
+      - name: Run sensitivity analysis
+        run: python evaluation/sensitivity_eval.py
