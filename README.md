@@ -73,6 +73,20 @@ Adapters normalize raw logs from different frameworks into the format Atlas expe
 
 See `adapters/` for full examples of each method.
 
+**Status:** Atlas is an experimental debugging tool, not a production monitoring system. It is designed for diagnostic support, not automated enforcement.
+
+**When to use Atlas:**
+
+- Development and debugging — understanding why an agent failed
+- Regression testing — detecting recurring failure patterns
+- Offline log analysis — diagnosing past runs
+
+Atlas is not designed for real-time production blocking or high-stakes automated decisions without human review.
+
+**Integration requirements:** Atlas requires access to tool call logs (name, count, result), agent responses, and basic interaction metadata. If your framework does not expose these, a custom adapter is needed. Without tool-level telemetry, some patterns will not fire (see Known Limitations).
+
+**Typical workflow:** Run your agent with Atlas enabled → observe detected failures and root cause → apply fixes manually or via the debugger → re-run and compare. Atlas supports iterative debugging, not one-shot evaluation.
+
 ---
 
 ## What You Get
@@ -97,6 +111,16 @@ When no failure is detected but grounding signals indicate a risk:
 Failures:   none detected
 Grounding:  tool_provided_data=False  uncertainty_acknowledged=True
 ```
+
+**How to interpret confidence scores:**
+
+Confidence reflects rule-based evidence accumulation, not statistical probability. Each signal adds a fixed amount; scores are not calibrated against labeled data.
+
+| Range | Meaning | Suggested action |
+|---|---|---|
+| < 0.5 | Weak signal, partial evidence only | Informational, no action needed |
+| 0.5–0.7 | Moderate evidence from multiple signals | Review the trace to confirm |
+| > 0.7 | Strong pattern match, multiple signals agree | Likely actionable, apply suggested fix |
 
 This specific combination (no data + disclosed) is acceptable behavior. Other grounding states — such as no data without disclosure, or thin grounding with high expansion ratio — may indicate risk. See the [Operational Playbook](docs/operational_playbook.md) for the full decision framework.
 
