@@ -1,0 +1,77 @@
+failure_id: premature_termination
+
+signal_contract:
+  shared_definitions: true
+
+cogency_tags: [tool_failure]
+
+# Premature termination telemetry contract
+# Required log fields:
+#   state.output_produced       bool
+#   state.chain_error_occurred  bool
+#   tools.call_count            int
+#
+# Termination Detection Scope
+#
+# This pattern detects only explicit termination failures:
+# - No output produced (silent exit)
+# - No execution error (not a crash)
+#
+# It does NOT detect:
+# - Low-quality output
+# - Premature stopping after partial progress
+# - Suboptimal termination decisions
+#
+# These require trajectory-level analysis (not available in
+# current telemetry).
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: silent_exit_without_output
+      from:
+        - state.output_produced
+        - state.chain_error_occurred
+      rule: state.output_produced == false and state.chain_error_occurred == false
+      comment: >
+        agent completed execution without producing output and without
+        raising an error — silent premature termination
+
+    - signal: tools_called_but_no_output
+      from:
+        - state.output_produced
+        - tools.call_count
+      rule: state.output_produced == false and tools.call_count > 0
+      comment: >
+        agent called tools but produced no final output — work was
+        attempted but not completed
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # silent exit alone (no output, no error) is the core evidence.
+  # tools_called_but_no_output strengthens the case — the agent tried
+  # to do something but silently stopped.
+  #
+  # silent_exit only = 0.5 < 0.6 → not diagnosed (could be a no-op query)
+  # tools_called + no output = 0.5 + 0.25 = 0.75 → diagnosed
+  # silent_exit + tools_called = 0.5 + 0.25 = 0.75 → diagnosed
+
+  evidence_modifiers:
+    - signal: silent_exit_without_output
+      add: 0.5
+
+    - signal: tools_called_but_no_output
+      add: 0.25
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0

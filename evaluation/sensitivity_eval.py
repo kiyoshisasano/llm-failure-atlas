@@ -13,17 +13,14 @@ Usage:
 """
 
 import json
-import sys
 import copy
 import tempfile
 from pathlib import Path
 
-ATLAS_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ATLAS_ROOT))
+from llm_failure_atlas.matcher import run as run_matcher
+from llm_failure_atlas.resource_loader import get_patterns_dir
 
-from matcher import run as run_matcher
-
-FAILURES_DIR = ATLAS_ROOT / "failures"
+FAILURES_DIR = Path(get_patterns_dir())
 
 
 # Base healthy telemetry

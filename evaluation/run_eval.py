@@ -13,15 +13,9 @@ import sys
 import os
 from pathlib import Path
 
-# Add parent dirs to path for imports
 EVAL_DIR = Path(__file__).parent
-ATLAS_DIR = EVAL_DIR.parent
-DEBUGGER_DIR = ATLAS_DIR.parent / "agent-failure-debugger"
 
-sys.path.insert(0, str(ATLAS_DIR))
-sys.path.insert(0, str(DEBUGGER_DIR))
-
-from metrics import compute_all
+from evaluation.metrics import compute_all
 
 
 def load_dataset(dataset_dir: str) -> list[dict]:
@@ -35,9 +29,9 @@ def load_dataset(dataset_dir: str) -> list[dict]:
 
 def run_debugger(matcher_output: list, graph_path: str) -> dict:
     """Run the debugger pipeline on matcher output."""
-    from graph_loader import load_graph
-    from causal_resolver import resolve
-    from formatter import format_output
+    from agent_failure_debugger.graph_loader import load_graph
+    from agent_failure_debugger.causal_resolver import resolve
+    from agent_failure_debugger.formatter import format_output
 
     graph = load_graph(graph_path)
     result = resolve(graph, matcher_output)
@@ -47,7 +41,7 @@ def run_debugger(matcher_output: list, graph_path: str) -> dict:
 def run_explainer(debugger_output: dict) -> dict | None:
     """Run the explainer in deterministic mode (no LLM)."""
     try:
-        from explainer import explain
+        from agent_failure_debugger.explainer import explain
         return explain(debugger_output, use_llm=False)
     except ImportError:
         return None
@@ -58,7 +52,8 @@ def main():
     flags = {a for a in sys.argv[1:] if a.startswith("--")}
 
     dataset_dir = args[0] if args else str(EVAL_DIR / "dataset")
-    graph_path = str(DEBUGGER_DIR / "failure_graph.yaml")
+    from llm_failure_atlas.resource_loader import get_graph_path
+    graph_path = str(get_graph_path())
     with_explainer = "--with-explainer" in flags
 
     cases = load_dataset(dataset_dir)

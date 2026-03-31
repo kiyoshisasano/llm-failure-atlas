@@ -1,0 +1,109 @@
+failure_id: incorrect_output
+
+# Signal names in this pattern are system-wide contracts.
+# Rules:
+#   - A signal name must have exactly one definition across all patterns.
+#   - Do not redefine the same signal name with a different rule.
+#   - If a different threshold is needed, define a new signal name.
+signal_contract:
+  shared_definitions: true
+
+cogency_tags: [outcome]
+
+# Incorrect output telemetry contract
+# Required log fields:
+#   response.alignment_score           float (0.0-1.0)
+#   interaction.user_correction_detected bool
+#   grounding.tool_provided_data        bool (optional, from callback)
+#   grounding.uncertainty_acknowledged  bool (optional, from callback)
+#   grounding.response_length           int  (optional, from callback)
+#
+# Note: This is the terminal outcome node. It detects that the system's
+# output diverged from user intent, confirmed by low alignment or
+# user correction.
+#
+# Grounding signals: these capture Sufficiency-like risk where the
+# agent answered without sufficient evidence. They are symptom
+# modifiers -- they increase confidence when the core evidence
+# (misalignment / user correction) is already present, but cannot
+# trigger the failure on their own.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: output_misaligned_with_intent
+      from:
+        - response.alignment_score
+      rule: response.alignment_score < 0.5
+      comment: output alignment with user intent is below threshold
+
+    - signal: user_correction_required
+      from:
+        - interaction.user_correction_detected
+      rule: interaction.user_correction_detected == true
+      comment: user had to correct the system output
+
+    - signal: grounding_data_absent
+      from:
+        - grounding.tool_provided_data
+        - grounding.response_length
+      rule: grounding.tool_provided_data == false and grounding.response_length > 200
+      comment: >
+        tools returned no usable data but agent produced a substantial
+        response, indicating it answered from training data rather than
+        grounded evidence
+
+    - signal: grounding_gap_not_acknowledged
+      from:
+        - grounding.tool_provided_data
+        - grounding.uncertainty_acknowledged
+      rule: grounding.tool_provided_data == false and grounding.uncertainty_acknowledged == false
+      comment: >
+        tools returned no usable data and the agent did not acknowledge
+        the gap, indicating possible hallucination without disclosure
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # low alignment alone may be acceptable (exploratory response).
+  # user correction alone may be minor (typo correction).
+  # the failure requires both: output was misaligned AND user needed
+  # to correct, confirming the output was incorrect.
+  # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.6 -> diagnosed
+  # confidence(alignment only) = 0.4 < 0.6 -> not diagnosed
+  # confidence(correction only) = 0.3 < 0.6 -> not diagnosed
+  #
+  # grounding signals are symptom modifiers (0.15 each). They boost
+  # confidence when core evidence is present but cannot trigger alone:
+  #   grounding_data_absent only = 0.15 < 0.6
+  #   grounding_gap_not_acknowledged only = 0.15 < 0.6
+  #   both grounding signals = 0.3 < 0.6
+  # They matter when combined with alignment:
+  #   alignment + grounding_data_absent = 0.4 + 0.15 = 0.55 < 0.6
+  #   alignment + both grounding = 0.4 + 0.3 = 0.7 >= 0.6 -> diagnosed
+
+  evidence_modifiers:
+    - signal: output_misaligned_with_intent
+      add: 0.4
+
+  symptom_modifiers:
+    - signal: user_correction_required
+      add: 0.3
+
+    - signal: grounding_data_absent
+      add: 0.15
+
+    - signal: grounding_gap_not_acknowledged
+      add: 0.15
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0

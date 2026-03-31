@@ -1,0 +1,66 @@
+failure_id: context_truncation_loss
+
+# Signal names in this pattern are system-wide contracts.
+# Rules:
+#   - A signal name must have exactly one definition across all patterns.
+#   - Do not redefine the same signal name with a different rule.
+#   - If a different threshold is needed, define a new signal name.
+signal_contract:
+  shared_definitions: true
+
+cogency_tags: [completeness]
+
+# Context truncation telemetry contract
+# Required log fields:
+#   context.truncated           bool
+#   context.critical_info_present bool
+#   retrieval.expected_coverage  float (0.0–1.0)
+#
+# Note: context.truncated indicates whether the context window limit
+# caused content to be dropped. context.critical_info_present indicates
+# whether the dropped content contained task-critical information.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: context_truncated_critical_info
+      from:
+        - context.truncated
+        - context.critical_info_present
+      rule: context.truncated == true and context.critical_info_present == true
+      comment: context window truncation removed critical information
+
+    - signal: retrieval_missing_expected_content
+      from:
+        - retrieval.expected_coverage
+      rule: retrieval.expected_coverage < 0.5
+      comment: retrieved content covers less than half of expected information
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # truncation alone is not failure (non-critical content may be dropped).
+  # low coverage alone may have other causes (poor query, sparse corpus).
+  # the failure requires both: critical info was truncated AND coverage dropped.
+  # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.6 → diagnosed
+  # confidence(truncation only) = 0.4 < 0.6 → not diagnosed
+  # confidence(coverage only) = 0.3 < 0.6 → not diagnosed
+
+  evidence_modifiers:
+    - signal: context_truncated_critical_info
+      add: 0.4
+
+    - signal: retrieval_missing_expected_content
+      add: 0.3
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0

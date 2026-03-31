@@ -1,0 +1,95 @@
+{
+  "runs": [
+    {
+      "iteration": 1,
+      "timestamp": "2026-03-19T21:58:00.589985",
+      "root": "premature_model_commitment",
+      "failure_count": 4,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 2,
+      "timestamp": "2026-03-19T21:58:00.695603",
+      "root": "premature_model_commitment",
+      "failure_count": 4,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 3,
+      "timestamp": "2026-03-19T21:58:00.837637",
+      "root": "premature_model_commitment",
+      "failure_count": 4,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 4,
+      "timestamp": "2026-03-19T21:58:00.950166",
+      "root": "clarification_failure",
+      "failure_count": 5,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 5,
+      "timestamp": "2026-03-19T21:58:01.059069",
+      "root": "clarification_failure",
+      "failure_count": 4,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 6,
+      "timestamp": "2026-03-19T21:58:01.170541",
+      "root": "premature_model_commitment",
+      "failure_count": 4,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 7,
+      "timestamp": "2026-03-19T21:58:01.277445",
+      "root": "instruction_priority_inversion",
+      "failure_count": 3,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 8,
+      "timestamp": "2026-03-19T21:58:01.385227",
+      "root": "premature_model_commitment",
+      "failure_count": 3,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 9,
+      "timestamp": "2026-03-19T21:58:01.497504",
+      "root": "premature_model_commitment",
+      "failure_count": 5,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    },
+    {
+      "iteration": 10,
+      "timestamp": "2026-03-19T21:58:01.636758",
+      "root": "premature_model_commitment",
+      "failure_count": 3,
+      "decision": "keep",
+      "rollback_executed": false,
+      "has_hard_regression": false
+    }
+  ],
+  "window_size": 30
+}

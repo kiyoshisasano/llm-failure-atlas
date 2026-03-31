@@ -14,11 +14,6 @@ import sys
 from pathlib import Path
 
 VALIDATION_DIR = Path(__file__).parent
-ATLAS_DIR = VALIDATION_DIR.parent
-DEBUGGER_DIR = ATLAS_DIR.parent / "agent-failure-debugger"
-
-sys.path.insert(0, str(ATLAS_DIR))
-sys.path.insert(0, str(DEBUGGER_DIR))
 
 
 # ---------------------------------------------------------------------------
@@ -26,10 +21,11 @@ sys.path.insert(0, str(DEBUGGER_DIR))
 # ---------------------------------------------------------------------------
 
 def run_matcher(log: dict) -> list[dict]:
-    from matcher import run as matcher_run_file
+    from llm_failure_atlas.matcher import run as matcher_run_file
+    from llm_failure_atlas.resource_loader import get_patterns_dir
     import tempfile, os
 
-    patterns_dir = ATLAS_DIR / "failures"
+    patterns_dir = Path(get_patterns_dir())
     # Write log to temp file for matcher
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json",
                                       delete=False, dir="/tmp") as f:
@@ -50,11 +46,12 @@ def run_matcher(log: dict) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def run_debugger(matcher_output: list) -> dict:
-    from graph_loader import load_graph
-    from causal_resolver import resolve
-    from formatter import format_output
+    from agent_failure_debugger.graph_loader import load_graph
+    from agent_failure_debugger.causal_resolver import resolve
+    from agent_failure_debugger.formatter import format_output
+    from llm_failure_atlas.resource_loader import get_graph_path
 
-    graph_path = str(DEBUGGER_DIR / "failure_graph.yaml")
+    graph_path = str(get_graph_path())
     graph = load_graph(graph_path)
     result = resolve(graph, matcher_output)
     return format_output(result)
@@ -66,7 +63,7 @@ def run_debugger(matcher_output: list) -> dict:
 
 def run_explainer(debugger_output: dict) -> dict | None:
     try:
-        from explainer import explain
+        from agent_failure_debugger.explainer import explain
         return explain(debugger_output, use_llm=False)
     except ImportError:
         return None

@@ -142,7 +142,7 @@ def signal_coverage(evidence: list[dict], explanation_text: str) -> float:
     Checks both raw signal names and human-readable label descriptions."""
     # Try to load label descriptions
     try:
-        from labels import SIGNAL_MAP
+        from agent_failure_debugger.labels import SIGNAL_MAP
     except ImportError:
         SIGNAL_MAP = {}
 

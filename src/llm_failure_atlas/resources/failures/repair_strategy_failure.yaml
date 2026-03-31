@@ -1,0 +1,68 @@
+failure_id: repair_strategy_failure
+
+# Signal names in this pattern are system-wide contracts.
+# Rules:
+#   - A signal name must have exactly one definition across all patterns.
+#   - Do not redefine the same signal name with a different rule.
+#   - If a different threshold is needed, define a new signal name.
+signal_contract:
+  shared_definitions: true
+
+cogency_tags: [correctness]
+
+# Repair strategy failure telemetry contract
+# Required log fields:
+#   output.repair_attempted    bool
+#   output.regenerated         bool
+#   output.repair_quality      float (0.0–1.0)
+#
+# Note: These fields distinguish between patch-based repair (modifying
+# existing output) and regeneration (rebuilding from corrected assumptions).
+# The failure occurs when the system patches without regenerating,
+# resulting in low-quality output.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: output_patched_without_regeneration
+      from:
+        - output.repair_attempted
+        - output.regenerated
+      rule: output.repair_attempted == true and output.regenerated == false
+      comment: system patched output instead of regenerating from corrected assumptions
+
+    - signal: repair_quality_below_threshold
+      from:
+        - output.repair_quality
+      rule: output.repair_quality < 0.5
+      comment: patch quality is low, indicating ineffective repair
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # patching without regeneration alone may be efficient (minor fix).
+  # low repair quality alone may have other causes.
+  # the failure requires both: the system chose to patch AND the result
+  # was low quality, confirming the repair strategy was inadequate.
+  # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.6 → diagnosed
+  # confidence(patch only) = 0.4 < 0.6 → not diagnosed
+  # confidence(quality only) = 0.3 < 0.6 → not diagnosed
+
+  evidence_modifiers:
+    - signal: output_patched_without_regeneration
+      add: 0.4
+
+    - signal: repair_quality_below_threshold
+      add: 0.3
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0

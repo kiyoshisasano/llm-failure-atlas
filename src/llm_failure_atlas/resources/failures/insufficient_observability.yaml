@@ -1,0 +1,80 @@
+failure_id: insufficient_observability
+
+# Meta failure: detects that telemetry is too incomplete for reliable diagnosis.
+#
+# This is NOT a domain failure. It represents an observability gap:
+# critical log fields are missing, so the system cannot reliably
+# determine whether failures occurred.
+#
+# Purpose:
+#   - Prevents false negatives from missing data
+#   - Flags traces that need better instrumentation
+#   - Distinguishes "no failure detected" from "cannot determine"
+
+signal_contract:
+  shared_definitions: true
+
+cogency_tags: [meta]
+
+# Telemetry contract:
+#   meta.missing_field_count     int (number of expected fields absent from log)
+#   meta.total_expected_fields   int (total fields the system expects)
+#
+# Note: meta.missing_field_count and meta.total_expected_fields must be
+# injected by the caller after scanning the log against expected schema.
+# If absent, this pattern is skipped.
+#
+# Expected fields (minimal set):
+#   input.ambiguity_score, interaction.clarification_triggered,
+#   interaction.user_correction_detected, reasoning.replanned,
+#   cache.hit, cache.similarity, cache.query_intent_similarity,
+#   retrieval.skipped, response.alignment_score
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: high_field_absence_rate
+      from:
+        - meta.missing_field_count
+        - meta.total_expected_fields
+      rule: meta.missing_field_count >= 4 and meta.total_expected_fields >= 6
+      comment: >
+        more than half of expected telemetry fields are missing,
+        making diagnosis unreliable
+
+    - signal: critical_fields_missing
+      from:
+        - meta.missing_field_count
+      rule: meta.missing_field_count >= 6
+      comment: >
+        a large number of fields are absent,
+        indicating severe observability gap
+
+diagnosis:
+
+  threshold: 0.5
+
+  # rationale:
+  # This has a lower threshold than domain failures because
+  # the goal is early warning, not confident diagnosis.
+  # confidence(high_absence) = 0.4 >= 0.5 → not diagnosed (moderate gap only)
+  # confidence(critical) = 0.3 < 0.5 → not diagnosed alone
+  # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.5 → diagnosed
+  # Note: threshold is 0.5 (not 0.6) to increase sensitivity for observability gaps.
+
+  evidence_modifiers:
+    - signal: high_field_absence_rate
+      add: 0.4
+
+    - signal: critical_fields_missing
+      add: 0.3
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0

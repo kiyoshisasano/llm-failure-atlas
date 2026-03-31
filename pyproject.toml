@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-failure-atlas"
+version = "0.1.0"
+description = "Detection and pattern library for LLM agent failures"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/kiyoshisasano/llm-failure-atlas"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"llm_failure_atlas.resources" = ["**/*.yaml", "**/*.json"]

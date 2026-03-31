@@ -1,0 +1,81 @@
+failure_id: agent_tool_call_loop
+
+# Signal names in this pattern are system-wide contracts.
+# Rules:
+#   - A signal name must have exactly one definition across all patterns.
+#   - Do not redefine the same signal name with a different rule.
+#   - If a different threshold is needed, define a new signal name.
+signal_contract:
+  shared_definitions: true
+
+cogency_tags: [tool_failure]
+
+# Tool call loop telemetry contract
+# Required log fields:
+#   tools.repeat_count       int (>= 0)
+#   state.progress_made      bool (backward compatible)
+#   state.any_tool_looping   bool (per-tool loop detection)
+#   reasoning.replanned      bool
+#
+# Temporal semantics:
+#   state.any_tool_looping is True when any single tool was called
+#   LOOP_THRESHOLD (3) or more times with zero successes. This is
+#   evaluated per-tool, not globally: if tool A loops but tool B
+#   succeeds, any_tool_looping is still True.
+#
+#   This provides temporal correlation without requiring event ordering:
+#   "at least one tool was called repeatedly and never succeeded."
+#
+# Backward compatibility:
+#   state.progress_made is retained. The primary signal now uses
+#   state.any_tool_looping for more precise per-tool detection.
+#   If any_tool_looping is not available (older adapters),
+#   the fallback signal uses progress_made.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: repeated_tool_call_without_progress
+      from:
+        - state.any_tool_looping
+      rule: state.any_tool_looping == true
+      comment: >
+        at least one tool was called 3+ times with zero successes,
+        detected per-tool rather than globally
+
+    - signal: no_replanning_before_repeat
+      from:
+        - reasoning.replanned
+        - tools.repeat_count
+      rule: tools.repeat_count >= 3 and reasoning.replanned == false
+      comment: repeated tool use without replanning
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # per-tool looping alone may be valid in some workflows (retry policies).
+  # lack of replanning alone does not imply looping.
+  # the failure requires: a tool looped with no success AND the agent
+  # did not replan its approach.
+  # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.6 → diagnosed
+  # confidence(loop only) = 0.4 < 0.6 → not diagnosed
+  # confidence(no_replan only) = 0.3 < 0.6 → not diagnosed
+
+  evidence_modifiers:
+    - signal: repeated_tool_call_without_progress
+      add: 0.4
+
+    - signal: no_replanning_before_repeat
+      add: 0.3
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0

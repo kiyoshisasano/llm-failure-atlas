@@ -11,15 +11,13 @@ import yaml
 import tempfile
 from pathlib import Path
 
+from llm_failure_atlas.resource_loader import get_patterns_dir
+
 CALIBRATION_DIR = Path(__file__).parent
-ATLAS_DIR = CALIBRATION_DIR.parent
-DEBUGGER_DIR = ATLAS_DIR.parent / "agent-failure-debugger"
-VALIDATION_DIR = ATLAS_DIR / "validation"
+REPO_ROOT = CALIBRATION_DIR.parent
+VALIDATION_DIR = REPO_ROOT / "validation"
 
-sys.path.insert(0, str(ATLAS_DIR))
-sys.path.insert(0, str(DEBUGGER_DIR))
-
-SCIB_PATH = ATLAS_DIR / "failures" / "semantic_cache_intent_bleeding.yaml"
+SCIB_PATH = Path(get_patterns_dir()) / "semantic_cache_intent_bleeding.yaml"
 
 # Examples that require SCIB to be diagnosed (regression constraint)
 SCIB_REQUIRED_EXAMPLES = [
@@ -62,9 +60,9 @@ def apply_config(baseline, config):
 
 def check_regression():
     """Check that SCIB is still diagnosed in all required examples."""
-    from matcher import run as matcher_run
+    from llm_failure_atlas.matcher import run as matcher_run
     for case in SCIB_REQUIRED_EXAMPLES:
-        log_path = str(ATLAS_DIR / "examples" / case / "log.json")
+        log_path = str(REPO_ROOT / "examples" / case / "log.json")
         r = matcher_run(str(SCIB_PATH), log_path)
         if not r["diagnosed"]:
             return False
@@ -72,7 +70,7 @@ def check_regression():
 
 
 def run_eval_suite():
-    from matcher import run as matcher_run
+    from llm_failure_atlas.matcher import run as matcher_run
     scenarios_dir = VALIDATION_DIR / "scenarios"
     annotations_dir = VALIDATION_DIR / "annotations"
 
@@ -99,7 +97,7 @@ def run_eval_suite():
             log_path = f.name
 
         matcher_results = []
-        for pp in sorted((ATLAS_DIR / "failures").glob("*.yaml")):
+        for pp in sorted(Path(get_patterns_dir()).glob("*.yaml")):
             r = matcher_run(str(pp), log_path)
             matcher_results.append(r)
         os.unlink(log_path)

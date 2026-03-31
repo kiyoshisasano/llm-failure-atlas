@@ -1,0 +1,74 @@
+failure_id: unmodeled_failure
+
+# Meta failure: detects that something is wrong but no known pattern explains it.
+#
+# This is NOT a domain failure. It represents the model's limitation:
+# symptoms are present, but none of the 12 defined failure patterns
+# have been triggered to explain them.
+#
+# Purpose:
+#   - Prevents the system from silently missing failures
+#   - Flags cases that need human review or new pattern definition
+#   - Allows the system to say "I don't know why this failed"
+
+signal_contract:
+  shared_definitions: true
+
+cogency_tags: [meta]
+
+# Telemetry contract:
+#   response.alignment_score             float (0.0–1.0)
+#   interaction.user_correction_detected  bool
+#   meta.diagnosed_failure_count          int (number of other failures diagnosed)
+#
+# Note: meta.diagnosed_failure_count must be injected by the caller
+# after running all domain patterns. If absent, this pattern is skipped.
+
+signal_extraction:
+
+  evaluation:
+    missing_field: false
+    multi_field_policy: strict_all_required
+
+  rules:
+    - signal: symptoms_present_without_diagnosis
+      from:
+        - response.alignment_score
+        - interaction.user_correction_detected
+      rule: response.alignment_score < 0.5 and interaction.user_correction_detected == true
+      comment: >
+        output is misaligned and user had to correct,
+        indicating a real failure occurred
+
+    - signal: no_known_pattern_matched
+      from:
+        - meta.diagnosed_failure_count
+      rule: meta.diagnosed_failure_count == 0
+      comment: >
+        no defined failure pattern was diagnosed,
+        meaning the cause is outside the current taxonomy
+
+diagnosis:
+
+  threshold: 0.6
+
+  # rationale:
+  # This fires only when BOTH conditions hold:
+  #   1. Something clearly went wrong (symptoms present)
+  #   2. No known pattern explains it (no diagnoses)
+  # confidence(both) = 0.4 + 0.3 = 0.7 >= 0.6 → diagnosed
+  # confidence(symptoms only) = 0.4 < 0.6 → not diagnosed (known pattern may explain it)
+  # confidence(no_match only) = 0.3 < 0.6 → not diagnosed (nothing went wrong)
+
+  evidence_modifiers:
+    - signal: symptoms_present_without_diagnosis
+      add: 0.4
+
+    - signal: no_known_pattern_matched
+      add: 0.3
+
+  confidence:
+    initial: 0.0
+    clamp:
+      min: 0.0
+      max: 1.0
