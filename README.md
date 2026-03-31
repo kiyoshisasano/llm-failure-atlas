@@ -352,6 +352,16 @@ This project does not define a universal telemetry standard. Instead, it consume
 
 This allows portability without requiring instrumentation changes. If a future standardized tracing format emerges, a new adapter can map it into Atlas's signal space without changing the matcher or patterns.
 
+## Telemetry Limitations
+
+Atlas does not operate on full event sequences. Telemetry is a summarized state representation (aggregated counters and inferred fields), not an ordered execution trace. This means:
+
+- Temporal patterns are approximated via aggregated signals (e.g., per-tool repeat counts with success/failure tracking)
+- Exact step-by-step reasoning or ordering is not reconstructed
+- Some trajectory-level failures (e.g., premature stopping after partial progress) are intentionally out of scope
+
+This is a design tradeoff for determinism and simplicity.
+
 ## Scope of Failures
 
 Atlas focuses on single-agent runtime failures:
@@ -360,13 +370,23 @@ Atlas focuses on single-agent runtime failures:
 - Tool interaction failures (loops, misinterpretation)
 - Retrieval and cache failures (drift, injection, truncation)
 - Output failures (misalignment, incorrect result)
-- Termination failures (silent exit, error-driven exit)
+- Termination failures (silent exit, error-driven exit). These describe how execution ended, not necessarily the root cause
 
 It does not cover:
 
 - Multi-agent coordination failures (see [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST))
 - Semantic correctness beyond keyword heuristics (requires embedding/ML)
 - Infrastructure failures outside the agent runtime (network, deployment)
+
+## Evaluation Status
+
+Atlas has been validated using controlled scenarios and regression tests (17/17 PASS, 7/7 false positive, 9/9 cross-model). However, it does not yet have a standardized evaluation benchmark against annotated real-world traces.
+
+- No ground-truth failure labels are currently used for precision/recall measurement
+- Detection accuracy is not measured against external datasets
+- Evaluation is based on reproducibility and consistency, not against labeled corpora
+
+Atlas patterns have been mapped to [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST) for taxonomy comparison (see [MAST mapping analysis](docs/deep_analysis/mast_mapping_analysis.md)), but MAST-Data traces are not directly compatible with Atlas's single-agent telemetry format.
 
 ---
 
