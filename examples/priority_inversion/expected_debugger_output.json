@@ -68,7 +68,7 @@
   ],
   "alternative_paths": [],
   "conflicts": [],
-  "explanation": "Causal path detected: instruction_priority_inversion predisposed prompt_injection_via_retrieval, which induced rag_retrieval_drift",
+  "explanation": "Root cause: instruction_priority_inversion (led to rag_retrieval_drift via 1 intermediate failure(s), 3 total detected)\nCausal path: instruction_priority_inversion predisposed prompt_injection_via_retrieval, which induced rag_retrieval_drift",
   "evidence": [
     {
       "failure": "instruction_priority_inversion",

@@ -95,7 +95,7 @@
     ]
   ],
   "conflicts": [],
-  "explanation": "Primary causal path: premature_model_commitment predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift\nAlternative contributing path: premature_model_commitment predisposed agent_tool_call_loop",
+  "explanation": "Root cause: premature_model_commitment (led to rag_retrieval_drift via 1 intermediate failure(s), 4 total detected)\nPrimary causal path: premature_model_commitment predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift\nAlternative paths: 1 contributing",
   "evidence": [
     {
       "failure": "premature_model_commitment",

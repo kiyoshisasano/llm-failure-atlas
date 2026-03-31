@@ -107,7 +107,7 @@
   ],
   "alternative_paths": [],
   "conflicts": [],
-  "explanation": "Causal path detected: clarification_failure predisposed assumption_invalidation_failure, which predisposed premature_model_commitment, which predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift",
+  "explanation": "Root cause: clarification_failure (led to rag_retrieval_drift via 3 intermediate failure(s), 5 total detected)\nCausal path: clarification_failure predisposed assumption_invalidation_failure, ... (1 more), semantic_cache_intent_bleeding induced rag_retrieval_drift",
   "evidence": [
     {
       "failure": "clarification_failure",

@@ -142,7 +142,7 @@
       "mode": "soft"
     }
   ],
-  "explanation": "Primary causal path: premature_model_commitment predisposed prompt_injection_via_retrieval, which induced rag_retrieval_drift\nAlternative competing path (lower confidence): premature_model_commitment predisposed semantic_cache_intent_bleeding, which induced rag_retrieval_drift\nAlternative competing path (lower confidence): context_truncation_loss induced rag_retrieval_drift",
+  "explanation": "Root cause: premature_model_commitment (led to rag_retrieval_drift via 1 intermediate failure(s), 5 total detected)\nPrimary causal path: premature_model_commitment predisposed prompt_injection_via_retrieval, which induced rag_retrieval_drift\nAlternative paths: 2 competing (suppressed)",
   "evidence": [
     {
       "failure": "premature_model_commitment",
