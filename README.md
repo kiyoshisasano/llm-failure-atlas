@@ -204,7 +204,9 @@ The callback handler infers telemetry fields not directly observable from agent 
 
 ## Tested with Real Agents
 
-Verified with real LangGraph agents (OpenAI API).
+Verified with real LangGraph agents using both OpenAI and Anthropic APIs.
+
+**Stage 1 (gpt-4o-mini):**
 
 | Scenario | Detected failure | conf |
 |---|---|---|
@@ -212,7 +214,13 @@ Verified with real LangGraph agents (OpenAI API).
 | Tool loop (5 retries) | `agent_tool_call_loop` | 0.7 |
 | Ambiguous cancel | `clarification_failure` | 0.7 |
 
-Additional: 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PASS), watch() verification (3/3 PASS).
+**Cross-model validation (Claude Haiku 4.5):**
+
+Claude Haiku behaves differently from gpt-4o-mini: it asks for clarification instead of guessing, does not retry failed tools without instruction, and does not pivot to alternative topics unprompted. Atlas correctly reported 0 failures for scenarios where Claude did not produce a failure. With system prompts that force failure-inducing behavior, Atlas detected all expected failures (3/3 PASS). Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses.
+
+See [Cross-Model Validation](docs/cross_model_validation.md) for the full report.
+
+Additional: 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PASS), watch() verification (3/3 PASS), false positive tests (7/7 PASS, 0 domain failures on healthy telemetry).
 
 **Redis Semantic Cache experiment:**
 
@@ -236,11 +244,15 @@ class MyAdapter(BaseAdapter):
         return {
             "input": {"ambiguity_score": ...},
             "interaction": {"clarification_triggered": ..., "user_correction_detected": ...},
-            "reasoning": {"replanned": ...},
+            "reasoning": {"replanned": ..., "hypothesis_count": ...},
             "cache": {"hit": ..., "similarity": ..., "query_intent_similarity": ...},
             "retrieval": {"skipped": ...},
             "response": {"alignment_score": ...},
-            "tools": {"call_count": ..., "repeat_count": ...},
+            "tools": {"call_count": ..., "repeat_count": ..., "soft_error_count": ...},
+            "state": {"progress_made": ...},
+            "grounding": {"tool_provided_data": ..., "uncertainty_acknowledged": ...,
+                          "response_length": ..., "source_data_length": ...,
+                          "expansion_ratio": ...},
         }
 ```
 
@@ -312,12 +324,12 @@ llm-failure-atlas/
   docs/
     applied_debugging_examples.md  # 7 real-world cases
     operational_playbook.md        # 9-pattern decision framework
+    cross_model_validation.md      # Claude Haiku validation results
     deep_analysis/
       failure_eligibility.md       # observation gap → failure requirements
       scib_observation_results.md  # cache reuse experiments
       decision_failure_exploration.md
       observation_layer_gap_analysis.md
-  experiments/                     # observation data collection scripts
   examples/                        # 10 reproducible test cases + sample input
   evaluation/                      # metrics + evaluation runner
   validation/                      # 30 scenarios + annotations
