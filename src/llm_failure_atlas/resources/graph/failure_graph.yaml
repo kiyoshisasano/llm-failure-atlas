@@ -1,4 +1,4 @@
-version: 1
+version: "0.1.0"
 
 # Graph rules (enforced by convention, validated manually):
 #   [ ] node.id must match failure_id in the corresponding pattern file

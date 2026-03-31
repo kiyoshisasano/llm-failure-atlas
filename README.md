@@ -1,349 +1,454 @@
-# agent-failure-debugger
+# LLM Failure Atlas
 
-Diagnoses *why* your LLM agent failed, not just *what* failed. Deterministic causal analysis with fix generation.
+The detection and pattern library for LLM agent failures. Defines failure patterns, signals, and adapters. Fully deterministic, no ML required.
+
+**Atlas detects.** For root cause diagnosis, explanation, and fixes, use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
+
+| When | Use | What you get |
+|---|---|---|
+| Agent is running | Atlas `watch()` | Live detection (via `auto_diagnose=True`) |
+| You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal |
+| Atlas only (no debugger) | `auto_diagnose=True` | Detected failures (pattern matching + signals) + telemetry |
+| Full pipeline | `auto_pipeline=True` or `diagnose()` | Detection + diagnosis + explanation + fix proposal (with optional auto-apply) |
 
 ```python
-from diagnose import diagnose
+# Detection only (Atlas)
+from llm_failure_atlas.adapters.callback_handler import watch
+graph = watch(workflow.compile(), auto_diagnose=True)
 
+# Full diagnosis (via Debugger)
+from agent_failure_debugger import diagnose
 result = diagnose(raw_log, adapter="langchain")
-print(result["explanation"]["context_summary"])
 ```
 
 ---
 
-## Use the Debugger
+## End-to-End Example (Atlas + Debugger)
 
-Use this when:
-- An agent gives confident answers without data
-- Tools return empty results or errors
-- Behavior changes between runs and you need to understand why
-
-Choose your entry point:
-
-- **During development** — use Atlas [`watch()`](https://github.com/kiyoshisasano/llm-failure-atlas) to observe live executions and diagnose behavior as it happens
-- **After failures** — use `diagnose()` to analyze a raw log or exported trace after the fact
-
-Atlas detects failures; the debugger explains why they happened and proposes fixes. You can use Atlas alone for detection, but diagnosis requires the debugger.
-
-### From a raw log (simplest)
-
-```python
-from diagnose import diagnose
-
-# Example: LangChain agent trace (no tool data)
-raw_log = {
-    "steps": [
-        {"type": "llm", "output": "The Q4 revenue was $4.2M, up 31% year-over-year."}
-    ],
-    "tool_calls": [],
-}
-
-result = diagnose(raw_log, adapter="langchain")
-
-print(result["summary"])
-# → {'root_cause': '...', 'failure_count': ..., 'gate_mode': '...', ...}
-
-print(result["explanation"]["context_summary"])
-# → describes what happened and why
-```
-
-`raw_log` is a loosely structured dict — its format depends on the source. The adapter normalizes it into the telemetry format Atlas expects. The more structured and complete the log (especially tool calls and outputs), the more accurate the diagnosis. Minimal logs may result in incomplete or degraded analysis.
-
-One function: adapt → detect → diagnose → explain. Requires [llm-failure-atlas](https://github.com/kiyoshisasano/llm-failure-atlas) cloned at the same directory level (sibling directory).
-
-**Directory layout:**
-
-```
-your-workspace/
-  llm-failure-atlas/      ← Atlas (detection)
-  agent-failure-debugger/  ← Debugger (diagnosis)
-```
-
-**Which adapter to use:**
-
-Adapters normalize raw logs from different sources into Atlas's telemetry format.
-
-| Adapter | Use for |
-|---|---|
-| `langchain` | LangChain / LangGraph traces |
-| `langsmith` | LangSmith run-tree exports |
-| `crewai` | CrewAI crew execution logs |
-| `redis_help_demo` | [Redis workshop](https://github.com/redis-developer/movie-recommender-rag-semantic-cache-workshop) Help Center |
-
-If unsure: use `"langchain"` for agent traces, `"redis_help_demo"` for the Redis workshop demo.
-
-Note: `crewai` and `redis_help_demo` adapters do not yet produce `state` or `grounding` telemetry. Some failure patterns (e.g., `agent_tool_call_loop`) may not fire through these adapters. See the [Atlas adapter verification status](https://github.com/kiyoshisasano/llm-failure-atlas#tested-with-real-agents) for details.
-
-**CLI:**
+Run a full example including detection (Atlas) and diagnosis (Debugger):
 
 ```bash
-python diagnose.py log.json --adapter langchain
-```
+pip install llm-failure-atlas
 
-### From matcher output (direct)
-
-```python
-from pipeline import run_pipeline
-
-result = run_pipeline(
-    matcher_output,
-    use_learning=True,
-    include_explanation=True,
-)
-
-print(result["summary"]["root_cause"])
-print(result["explanation"]["interpretation"])
-print(result["explanation"]["risk"]["level"])
-```
-
-Use this when you already have matcher output, or when building a custom adapter.
-
-### From a live agent (via Atlas watch)
-
-Atlas's `watch()` wraps a LangGraph agent and runs the debugger pipeline on completion. It is a separate entry point from `diagnose()` — both produce the same pipeline output but from different starting points: `watch()` captures telemetry from a live execution, while `diagnose()` accepts a raw log after the fact.
-
-If you use [llm-failure-atlas](https://github.com/kiyoshisasano/llm-failure-atlas) for detection, `watch()` runs the debugger automatically:
-
-```python
-from adapters.callback_handler import watch
-
-graph = watch(workflow.compile(), auto_diagnose=True, auto_pipeline=True)
-result = graph.invoke({"messages": [...]})
-# → detection + debugger pipeline + explanation printed automatically
-```
-
-For a copy-paste example without an API key, see [Reproducible Examples](#reproducible-examples) below.
-
----
-
-## Quick Start
-
-To run the full pipeline with real matcher output (requires both repositories cloned as siblings):
-
-```bash
-git clone https://github.com/kiyoshisasano/agent-failure-debugger.git
-cd agent-failure-debugger
-pip install -r requirements.txt
-
-# Run with sample data
-python pipeline.py ../llm-failure-atlas/examples/simple/matcher_output.json --use-learning
-```
-
-Output:
-
-```
-=== PIPELINE RESULT ===
-  Root cause:  premature_model_commitment (confidence: 0.85)
-  Failures:    3
-  Fixes:       1
-  Gate:        auto_apply (score: 0.9218)
-  Applied:     no
+# For full pipeline (detection + diagnosis + fixes):
+pip install agent-failure-debugger
 ```
 
 ---
 
-## API Details
+## How to Use
 
-### Enhanced explanation
-
-```python
-expl = result["explanation"]
-print(expl["context_summary"])     # what happened
-print(expl["interpretation"])      # why it happened
-print(expl["risk"]["level"])       # HIGH / MEDIUM / LOW
-print(expl["recommendation"])      # what to do
-print(expl["observation"])         # signal coverage info
-```
-
-When observation coverage is low (many signals were not observed), the risk level is automatically raised and the interpretation notes that the diagnosis may be incomplete.
-
-CLI: `python explain.py --enhanced debugger_output.json`
-
-### Individual steps
+Add one line to your LangGraph agent for failure detection:
 
 ```python
-from pipeline import run_diagnosis, run_fix
+from llm_failure_atlas.adapters.callback_handler import watch
 
-diag = run_diagnosis(matcher_output)
-fix_result = run_fix(diag, use_learning=True, top_k=2)
+graph = watch(workflow.compile(), auto_diagnose=True)
+result = graph.invoke({"messages": [HumanMessage(content="...")]})
+# → detected failures printed on completion
 ```
 
-### External evaluation
+**Flags:**
+- `auto_diagnose=True` — run Atlas detection only (pattern matching + signals, no causal analysis)
+- `auto_pipeline=True` — also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause, explanation, fix proposal) automatically
 
-```python
-def my_staging_test(bundle):
-    fixes = bundle["autofix"]["recommended_fixes"]
-    # apply fixes in your staging env
-    return {
-        "success": True,
-        "failure_count": 0,
-        "root": None,
-        "has_hard_regression": False,
-        "notes": "passed staging tests",
-    }
+The original graph behavior is unchanged. Requires `pip install langchain-core`. Core pipeline requires only `pyyaml`.
 
-result = run_pipeline(
-    matcher_output,
-    auto_apply=True,
-    evaluation_runner=my_staging_test,
-)
-```
+**Other integration options:**
 
-If `evaluation_runner` is not provided, the built-in counterfactual simulation is used. If the runner raises an exception, the pipeline falls back to `staged_review` deterministically.
+Adapters normalize raw logs from different frameworks into the format Atlas expects.
 
-For real-world interpretation examples — including before/after fix effects — see [Applied Debugging Examples](https://github.com/kiyoshisasano/llm-failure-atlas/blob/main/docs/applied_debugging_examples.md) and [Operational Playbook](https://github.com/kiyoshisasano/llm-failure-atlas/blob/main/docs/operational_playbook.md) in the Atlas repository.
-
----
-
-## Input Format
-
-A JSON array of failure results from the matcher. Each entry needs `failure_id`, `diagnosed`, and `confidence`:
-
-```json
-[
-  {
-    "failure_id": "premature_model_commitment",
-    "diagnosed": true,
-    "confidence": 0.7,
-    "signals": {
-      "ambiguity_without_clarification": true,
-      "assumption_persistence_after_correction": true
-    }
-  }
-]
-```
-
-The pipeline validates input at entry and rejects malformed data with clear error messages.
-
----
-
-## Output Format
-
-```json
-{
-  "root_candidates": ["premature_model_commitment"],
-  "root_ranking": [{"id": "premature_model_commitment", "score": 0.85}],
-  "failures": [
-    {"id": "premature_model_commitment", "confidence": 0.7},
-    {"id": "semantic_cache_intent_bleeding", "confidence": 0.7,
-     "caused_by": ["premature_model_commitment"]}
-  ],
-  "causal_paths": [
-    ["premature_model_commitment", "semantic_cache_intent_bleeding", "rag_retrieval_drift"]
-  ]
-}
-```
-
----
-
-## Auto-Apply Gate
-
-| Score | Mode | Behavior |
+| Method | Use when | Code |
 |---|---|---|
-| >= 0.85 | `auto_apply` | Apply, evaluate, keep or rollback |
-| 0.65-0.85 | `staged_review` | Write to patches/, await human approval |
-| < 0.65 | `proposal_only` | Present fix proposal only |
+| Callback handler | Any LangChain/LangGraph agent | `config={"callbacks": [AtlasCallbackHandler(auto_diagnose=True)]}` |
+| CrewAI listener | CrewAI crews | `AtlasCrewListener(auto_diagnose=True)` — auto-registers on event bus |
+| Batch adapter | Post-hoc analysis from JSON exports | `LangChainAdapter().build_matcher_input(raw_trace)` |
+| Redis help demo | [Redis workshop](https://github.com/redis-developer/movie-recommender-rag-semantic-cache-workshop) /api/help/chat | `RedisHelpDemoAdapter().build_matcher_input(response)` |
 
-Hard blockers (force proposal_only regardless of score):
-- `safety != "high"`
-- `review_required == true`
-- `fix_type == "workflow_patch"`
-- Execution plan has conflicts or failed validation
-- `grounding_gap_not_acknowledged` signal active
+See `src/llm_failure_atlas/adapters/` for full examples of each method.
 
-## Fix Safety
+**Status:** Atlas is an experimental debugging tool, not a production monitoring system. It is designed for diagnostic support, not automated enforcement.
 
-Fixes are generated from predefined templates, not learned behavior. They are deterministic and reproducible, but not guaranteed to be correct — some fixes may introduce regressions in complex workflows.
+**When to use Atlas:**
 
-Safety mechanisms: the confidence gate prevents low-evidence fixes from auto-apply, hard blockers prevent unsafe categories of changes, the evaluation runner validates fixes before acceptance, and rollback is triggered automatically if evaluation fails.
+- Development and debugging — understanding why an agent failed
+- Regression testing — detecting recurring failure patterns
+- Offline log analysis — diagnosing past runs
 
-Always review or evaluate fixes before applying in production environments.
+Atlas is not designed for real-time production blocking or high-stakes automated decisions without human review.
 
-## Automation Guidance
+**Integration requirements:** Atlas requires access to tool call logs (name, count, result), agent responses, and basic interaction metadata. If your framework does not expose these, a custom adapter is needed. Without tool-level telemetry, some patterns will not fire (see Known Limitations).
 
-| Environment | Recommended mode | Notes |
+**Typical workflow:** Run your agent with Atlas enabled → observe detected failures and root cause → apply fixes manually or via the debugger → re-run and compare. Atlas supports iterative debugging, not one-shot evaluation.
+
+---
+
+## What You Get
+
+When a failure is detected:
+
+```
+Root cause:  agent_tool_call_loop (conf=0.55)
+Failures:    1
+Gate:        proposal_only (score=0.0)
+
+Explanation:
+  Context: Root cause identified: the agent repeatedly invoked tools
+           without making meaningful state progress.
+  Risk: MEDIUM
+  Action: Review the proposed fix before applying.
+```
+
+When no failure is detected but grounding signals indicate a risk:
+
+```
+Failures:   none detected
+Grounding:  tool_provided_data=False  uncertainty_acknowledged=True
+```
+
+**How to interpret confidence scores:**
+
+Confidence reflects rule-based evidence accumulation, not statistical probability. Each signal adds a fixed amount; scores are not calibrated against labeled data.
+
+| Range | Meaning | Suggested action |
 |---|---|---|
-| Development | `auto_apply` | Iterate quickly, evaluate fixes automatically |
-| Staging | `staged_review` | Use evaluation_runner to validate before applying |
-| Production | `proposal_only` | Human approval required, avoid auto_apply |
+| < 0.5 | Weak signal, partial evidence only | Informational, no action needed |
+| 0.5–0.7 | Moderate evidence from multiple signals | Review the trace to confirm |
+| > 0.7 | Strong pattern match, multiple signals agree | Likely actionable, apply suggested fix |
 
-The debugger is designed for assisted decision-making, not fully autonomous system modification.
+This specific combination (no data + disclosed) is acceptable behavior. Other grounding states — such as no data without disclosure, or thin grounding with high expansion ratio — may indicate risk. See the [Operational Playbook](docs/operational_playbook.md) for the full decision framework.
 
----
-
-## Pipeline Steps
-
-```
-matcher_output.json
-  → pipeline.py (orchestrator)
-    ├ main.py               causal resolution + root ranking
-    ├ abstraction.py        top-k path selection (optional)
-    ├ decision_support.py   priority scoring + action plan
-    ├ autofix.py            fix selection + patch generation
-    ├ auto_apply.py         confidence gate + reason_code
-    ├ pipeline_post_apply.py  evaluation runner or counterfactual
-    ├ pipeline_summary.py     summary generation
-    └ explainer.py          explanation (context + risk + observation)
-```
+For real-world walkthroughs, see [Applied Debugging Examples](docs/applied_debugging_examples.md).
 
 ---
 
-## File Structure
+## Minimal Detection Example (Matcher Only)
 
-| File | Role |
+Run a single failure pattern against a prepared matcher input — no agent, no debugger:
+
+```python
+from llm_failure_atlas.matcher import run
+from llm_failure_atlas.resource_loader import get_patterns_dir
+from pathlib import Path
+
+# Run a single pattern
+patterns = Path(get_patterns_dir())
+result = run(str(patterns / "incorrect_output.yaml"), "examples/sample_matcher_input.json")
+
+print(result["failure_id"])   # "incorrect_output"
+print(result["diagnosed"])    # True
+print(result["confidence"])   # 0.7
+print(result["signals"])      # which signals fired
+```
+
+This is useful for understanding how detection works, testing custom adapters, or debugging signal behavior. For full pipeline usage (diagnosis, explanation, fixes), use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
+
+---
+
+## What It Detects
+
+17 failure patterns (14 domain + 3 meta) across 5 layers, connected by a causal graph (17 nodes, 15 edges).
+
+**Domain failures:**
+
+| Failure | Layer | Description |
+|---|---|---|
+| `clarification_failure` | reasoning | Fails to request clarification under ambiguous input |
+| `assumption_invalidation_failure` | reasoning | Persists with invalidated hypothesis |
+| `premature_model_commitment` | reasoning | Early fixation on a single interpretation |
+| `repair_strategy_failure` | reasoning | Patches errors instead of regenerating |
+| `semantic_cache_intent_bleeding` | retrieval | Cache reuse with intent mismatch |
+| `prompt_injection_via_retrieval` | retrieval | Adversarial instructions in retrieved content |
+| `context_truncation_loss` | retrieval | Critical information lost during truncation |
+| `rag_retrieval_drift` | retrieval | Degraded retrieval relevance |
+| `instruction_priority_inversion` | instruction | Lower-priority instructions override higher |
+| `agent_tool_call_loop` | tool | Repeated tool invocation without progress |
+| `tool_result_misinterpretation` | tool | Misinterpretation of tool output |
+| `incorrect_output` | output | Final output misaligned with user intent |
+| `premature_termination` | output | Agent exited without producing output or error |
+| `failed_termination` | output | Agent exited due to execution error |
+
+**Meta failures** (model limitation indicators, not part of causal graph):
+
+| Failure | Fires when |
 |---|---|
-| `diagnose.py` | Single entry point: raw log → full diagnosis |
-| `pipeline.py` | Pipeline orchestrator (from matcher output) |
-| `pipeline_post_apply.py` | Post-apply evaluation (runner + counterfactual) |
-| `pipeline_summary.py` | Summary generation |
-| `main.py` | CLI entry point (diagnosis only) |
-| `config.py` | Paths, weights, thresholds |
-| `graph_loader.py` | Load failure_graph.yaml |
-| `causal_resolver.py` | Normalize, find roots, build paths, rank |
-| `formatter.py` | Path scoring + conflict resolution |
-| `labels.py` | SIGNAL_MAP (34) + FAILURE_MAP (17) |
-| `explainer.py` | Deterministic + optional LLM explanation |
-| `decision_support.py` | Failure to action mapping |
-| `autofix.py` | Fix selection + patch generation |
-| `fix_templates.py` | 17 fix definitions (14 domain + 3 meta) |
-| `auto_apply.py` | Confidence gate + auto-apply |
-| `execute_fix.py` | Dependency ordering + staged apply |
-| `evaluate_fix.py` | Counterfactual simulation |
-| `policy_loader.py` | Read-only learning store access |
+| `unmodeled_failure` | Symptoms present but no domain pattern matched |
+| `insufficient_observability` | Too many expected telemetry fields missing |
+| `conflicting_signals` | Signals point in contradictory directions |
 
 ---
 
-## Graph Source
+## Causal Graph
 
-The canonical `failure_graph.yaml` is in [llm-failure-atlas](https://github.com/kiyoshisasano/llm-failure-atlas). The debugger loads the graph from Atlas as a sibling directory (or via the `ATLAS_ROOT` environment variable). There is no local copy.
+You don't need to memorize this graph. The tool traverses it for you and reports the root cause automatically.
+
+```mermaid
+graph TD
+    CF[clarification_failure] --> AIF[assumption_invalidation_failure]
+    AIF --> PMC[premature_model_commitment]
+    PMC --> SCIB[semantic_cache_intent_bleeding]
+    PMC --> PIVR[prompt_injection_via_retrieval]
+    PMC --> ATCL[agent_tool_call_loop]
+    PMC --> RSF[repair_strategy_failure]
+    IPI[instruction_priority_inversion] --> PIVR
+    CTL[context_truncation_loss] --> RRD[rag_retrieval_drift]
+    SCIB --> RRD
+    PIVR --> RRD
+    RRD --> IO((incorrect_output))
+    ATCL --> TRM[tool_result_misinterpretation]
+    ATCL --> PT([premature_termination])
+    ATCL --> FT([failed_termination])
+    RSF --> FT
+```
+
+The same downstream failure can have multiple upstream causes. The graph makes competing causal paths explicit.
+
+---
+
+## Observation Layer
+
+The callback handler infers telemetry fields not directly observable from agent events.
+
+| Field | Inference method |
+|---|---|
+| `input.ambiguity_score` | Word count + pronoun/vague term detection |
+| `interaction.user_correction_detected` | Response admits failure + pivots to different topic |
+| `response.alignment_score` | Word overlap - topic mismatch penalty - negation penalty |
+| `state.progress_made` | Any tool returned non-error output |
+| `state.any_tool_looping` | Any tool called 3+ times with zero successes (per-tool evaluation) |
+| `tools.soft_error_count` | Tool output text contains error/empty markers |
+| `tools.error_count` | Tool-level exceptions (HTTP errors, timeouts, MCP failures) |
+| `tools.hard_error_detected` | True if any tool raised an exception (vs returning empty) |
+| `grounding.tool_provided_data` | At least one tool returned non-error output |
+| `grounding.uncertainty_acknowledged` | Response contains staleness/uncertainty language |
+| `grounding.source_data_length` | Total character count of usable tool outputs |
+| `grounding.expansion_ratio` | response_length / source_data_length |
+| `retrieval.adversarial_score` | Keyword scan of retrieved documents for injection patterns |
+| `context.truncated` | Input tokens exceed 85% of model context window |
+
+34 signals across 17 patterns. Each signal tracks observation quality: unobserved signals receive 0.6x confidence decay.
+
+---
+
+## Tested with Real Agents
+
+Verified with real LangGraph agents under controlled scenarios, using OpenAI, Anthropic, and Google APIs.
+
+| Scenario | gpt-4o-mini | Claude Haiku 4.5 | Gemini 2.5 Flash |
+|---|---|---|---|
+| Forced topic pivot | `incorrect_output` (0.7) | `incorrect_output` (0.7) | `incorrect_output` (0.7) |
+| Forced tool retry loop | `agent_tool_call_loop` (0.7) | `agent_tool_call_loop` (0.7) | `agent_tool_call_loop` (0.7) |
+| No clarification allowed | `clarification_failure` (0.7) | `clarification_failure` (0.7) | `clarification_failure` (0.7) |
+
+Scenarios use system prompts to induce specific failure behaviors, ensuring reproducibility across model versions. Without constraints, the three models handle the same inputs differently: Claude asks for clarification where gpt-4o-mini guesses, Gemini asks for dates where Claude asks for IDs. Atlas correctly reports 0 failures when no failure occurs, regardless of model.
+
+Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses. See [Cross-Model Validation](docs/cross_model_validation.md) for the full report.
+
+**Adapter verification status:**
+
+| Adapter | Verified | Notes |
+|---|---|---|
+| callback_handler (watch) | ✅ 3 models | gpt-4o-mini, Claude Haiku, Gemini 2.5 Flash |
+| langchain_adapter | ✅ Parity confirmed | Identical telemetry and detection to watch() |
+| langsmith_adapter | ✅ Parity confirmed | Identical telemetry and detection to langchain_adapter |
+| crewai_adapter | ⚠ Stage 1 verified | Functional but does not yet produce `state` or `grounding` telemetry. Core detection (tool calls, alignment, clarification) works; `agent_tool_call_loop` may not fire when using `diagnose()` (batch adapter path) |
+| redis_help_demo_adapter | ⚠ Stage 1 verified | Tested with Redis workshop; not re-verified after Phase 2 marker changes |
+
+Additional: 10/10 regression tests, 7/7 false positive tests (0 domain failures on healthy telemetry), 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PASS).
+
+**Redis Semantic Cache experiment:**
+
+Tested with a Redis RAG + Semantic Cache demo (30 seed/probe pairs across 3 rounds, 15 cache hits observed). Cache reuse with different-intent queries occurred frequently. Similarity values for different-query and valid-rephrase cases overlapped, confirming that a single similarity threshold cannot reliably separate the two. The current `semantic_cache_intent_bleeding` signal did not trigger for any observed case. Detection improvement requires a secondary signal beyond similarity. See [SCIB Observation Results](docs/deep_analysis/scib_observation_results.md) for details.
+
+---
+
+## Writing a Custom Adapter
+
+Extend `BaseAdapter`:
 
 ```python
-from config import GRAPH_PATH
-print(GRAPH_PATH)  # shows which graph is loaded
+from llm_failure_atlas.adapters.base_adapter import BaseAdapter
+
+class MyAdapter(BaseAdapter):
+    source = "my_platform"
+
+    def normalize(self, raw_log: dict) -> dict: ...
+
+    def extract_features(self, normalized: dict) -> dict:
+        return {
+            "input": {"ambiguity_score": ...},
+            "interaction": {"clarification_triggered": ..., "user_correction_detected": ...},
+            "reasoning": {"replanned": ..., "hypothesis_count": ...},
+            "cache": {"hit": ..., "similarity": ..., "query_intent_similarity": ...},
+            "retrieval": {"skipped": ...},
+            "response": {"alignment_score": ...},
+            "tools": {"call_count": ..., "repeat_count": ..., "soft_error_count": ...},
+            "state": {"progress_made": ..., "any_tool_looping": ...},
+            "grounding": {"tool_provided_data": ..., "uncertainty_acknowledged": ...,
+                          "response_length": ..., "source_data_length": ...,
+                          "expansion_ratio": ...},
+        }
 ```
 
 ---
 
-## Configuration
+## Pipeline
 
-| Variable | Default | Description |
+```
+[Your Agent] → Adapter → Telemetry → Matcher → Debugger → Fix + Explanation
+```
+
+The Atlas provides structure, detection, and adapters. The [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) provides causal interpretation, explanation, fix generation, and auto-apply.
+
+---
+
+## KPIs
+
+| KPI | Prevents | Target |
 |---|---|---|
-| `ATLAS_ROOT` | `../llm-failure-atlas` | Path to Atlas repository |
-| `DEBUGGER_ROOT` | `.` | Path to this repository |
-| `ATLAS_LEARNING_DIR` | `$ATLAS_ROOT/learning` | Learning store location |
-
-All scoring weights and gate thresholds are in `config.py`.
+| threshold_boundary_rate | Detection instability | < 5% |
+| fix_dominance | Fix overfitting | < 60% |
+| failure_monotonicity | System runaway | > 90% |
+| rollback_rate | Auto-apply safety risk | < 10% |
+| no_regression_rate | Explicit degradation | > 95% |
+| causal_consistency_rate | Policy drift | > 90% |
 
 ---
 
 ## Design Principles
 
-- **Deterministic** — same matcher output, same root cause, same fix, same gate decision
-- **Graph is for interpretation only** — not used during detection
-- **Signal names are contracts** — no redefinition allowed
-- **Learning is suggestion-only** — structure is never auto-modified
-- **Fail fast on invalid input** — pipeline validates at entry
-- **Enhanced explanations** — `include_explanation=True` adds context, interpretation, risk, and recommendation
+- **Deterministic** — same input, same diagnosis. No probabilistic inference.
+- **Symbolic** — all rules are human-readable. No learned models in the core.
+- **Consistent over correct** — best-supported cause, not necessarily the "true" cause.
+- **Detection is local** — each failure is scored independently. The graph is for interpretation only.
+- **Signal uniqueness** — one definition per signal across all patterns.
+- **Learning is suggestion-only** — patterns, graph, and templates are never auto-modified.
+- **Observation quality** — unobserved signals receive 0.6x confidence decay.
+
+---
+
+## Known Limitations
+
+Some failure-like behaviors are observable but not yet diagnosable as failure patterns:
+
+- **Thin grounding** — the agent produces detailed specifics without source data, sometimes while acknowledging the lack of data. Observed across gpt-4o-mini and Claude Haiku in 3 domains (weather, stock, restaurant). A draft pattern has been validated (5 cases detected, 0 false positives) but is not yet part of the detection set. Threshold calibration for mid-range responses is still needed before promotion.
+- **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Tested with 30 seed/probe pairs; similarity ranges for valid and invalid reuse overlap, confirming that similarity alone is insufficient. Requires a secondary signal.
+- **Semantic mismatch** — a tool returns data for a completely different topic. Not detectable with current heuristics; requires embedding-based comparison (Layer 1 ML).
+
+These are tracked as observation gaps, not planned features. See [Failure Eligibility](docs/deep_analysis/failure_eligibility.md) for the conditions required to promote each to a diagnosable pattern.
+
+**Heuristic limitations:**
+
+- **Soft error detection** — tool output is scanned for keywords ("error", "not found", "empty", etc.) to infer whether the tool returned usable data. Normal output that incidentally contains these words in a different context may be misclassified. If this causes false positives for your domain, review `TOOL_SOFT_ERROR_MARKERS` in the adapter you are using.
+- **Model context limits** — context truncation risk is estimated using hardcoded token limits per model (`MODEL_CONTEXT_LIMITS` in `callback_handler.py`). New models require a manual update to this dictionary. If a model is not listed, truncation detection is skipped rather than guessed.
+- **Adapter-dependent patterns** — some patterns (e.g., `tool_result_misinterpretation`) require telemetry fields (`tool.output_valid`, `state.updated_correctly`) that no adapter currently produces. These patterns exist in the taxonomy but will not fire until an adapter emits the required fields.
+
+**Design boundary — state telemetry:**
+
+The `state` section in telemetry contains local aggregations (per-tool call counts, success/failure counts) and their direct derivations (`any_tool_looping`, `progress_made`). It does not contain cross-pattern logic, causal inference, or multi-step reasoning. These belong in the matcher and debugger pipeline, not in the adapter.
+
+---
+
+## Design Positioning
+
+This project differs from other approaches to LLM agent reliability:
+
+| Approach | How it works | Tradeoff |
+|---|---|---|
+| LLM-as-a-judge | LLM evaluates agent output | Probabilistic, non-deterministic, expensive |
+| Observability platforms | Collect and display traces | Data collection, not diagnosis |
+| Runtime verification | Monitor against formal specifications | Requires formal specs per agent |
+| Guardrails / validators | Block or filter inputs/outputs | Prevention, not diagnosis |
+| **This project** | **Deterministic signal extraction + causal graph** | **Explainable but heuristic-bound** |
+
+Atlas occupies a specific position: a deterministic diagnosis layer that produces the same result for the same input, explains why it reached that conclusion, and does not require ML or formal specifications. This makes it auditable and reproducible, at the cost of being limited to what keyword/threshold heuristics can observe.
+
+## Telemetry Model
+
+This project does not define a universal telemetry standard. Instead, it consumes framework-specific telemetry via adapters and maps it into a deterministic signal space.
+
+| System | Approach |
+|---|---|
+| OpenTelemetry GenAI | Standardized trace schema for LLM calls |
+| OpenInference | Unified observability attributes for AI |
+| This project | Signal extraction layer on top of arbitrary telemetry |
+
+This allows portability without requiring instrumentation changes. If a future standardized tracing format emerges, a new adapter can map it into Atlas's signal space without changing the matcher or patterns.
+
+## Telemetry Limitations
+
+Atlas does not operate on full event sequences. Telemetry is a summarized state representation (aggregated counters and inferred fields), not an ordered execution trace. This means:
+
+- Temporal patterns are approximated via aggregated signals (e.g., per-tool repeat counts with success/failure tracking)
+- Exact step-by-step reasoning or ordering is not reconstructed
+- Some trajectory-level failures (e.g., premature stopping after partial progress) are intentionally out of scope
+
+This is a design tradeoff for determinism and simplicity.
+
+## Scope of Failures
+
+Atlas focuses on single-agent runtime failures:
+
+- Reasoning failures (clarification, commitment, assumption persistence)
+- Tool interaction failures (loops, misinterpretation)
+- Retrieval and cache failures (drift, injection, truncation)
+- Output failures (misalignment, incorrect result)
+- Termination failures (silent exit, error-driven exit). These describe how execution ended, not necessarily the root cause
+
+It does not cover:
+
+- Multi-agent coordination failures (see [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST))
+- Semantic correctness beyond keyword heuristics (requires embedding/ML)
+- Infrastructure failures outside the agent runtime (network, deployment)
+
+## Evaluation Status
+
+Atlas uses three evaluation methods:
+
+**Regression and false positive testing:** 17/17 regression PASS, 7/7 false positive PASS (healthy telemetry produces 0 domain failures), 9/9 cross-model PASS.
+
+**Mutation testing:** Healthy telemetry is mutated to inject each failure pattern. 13/14 domain patterns are testable (tool_result_misinterpretation requires adapter fields no adapter currently produces). Mutation score: 13/13 KILLED (100% of testable patterns detected when injected). Run `python evaluation/mutation_eval.py` to reproduce.
+
+**Sensitivity analysis:** Numeric thresholds are swept to identify transition points where detection flips. All patterns show clean transitions at documented thresholds with no unstable regions. Run `python evaluation/sensitivity_eval.py` to reproduce.
+
+**What is not yet evaluated:**
+
+- No ground-truth failure labels from real-world traces (precision/recall against external datasets)
+- No evaluation against annotated benchmarks (MAST-Data traces are multi-agent, not compatible)
+- Detection quality is measured by reproducibility and mutation coverage, not by labeled corpora
+
+Atlas patterns have been mapped to [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST) for taxonomy comparison (see [MAST mapping analysis](docs/deep_analysis/mast_mapping_analysis.md)).
+
+---
+
+## Structure
+
+```
+llm-failure-atlas/
+  pyproject.toml                         # PyPI package config
+  src/llm_failure_atlas/
+    __init__.py                          # package entry, version
+    matcher.py                           # detection engine
+    resource_loader.py                   # resolve bundled resources
+    compute_kpi.py                       # 6 operational KPIs
+    adapters/
+      callback_handler.py               # real-time callback + watch()
+      crewai_adapter.py                  # CrewAI event listener
+      langchain_adapter.py              # LangChain batch adapter
+      langsmith_adapter.py              # LangSmith batch adapter
+      redis_help_demo_adapter.py        # Redis workshop adapter
+      base_adapter.py                   # abstract interface
+    resources/
+      failures/                         # 17 pattern definitions (YAML)
+      graph/failure_graph.yaml          # causal graph (17 nodes, 15 edges)
+      learning/                         # default learning stores
+    learning/
+      update_policy.py                  # suggestion-only learning
+  evaluation/                            # mutation + sensitivity tests
+  validation/                            # 30 scenarios + annotations
+  examples/                              # 10 reproducible test cases
+  docs/                                  # analysis + playbook
+```
 
 ---
 
@@ -351,60 +456,20 @@ All scoring weights and gate thresholds are in `config.py`.
 
 | Repository | Role |
 |---|---|
-| [llm-failure-atlas](https://github.com/kiyoshisasano/llm-failure-atlas) | Failure patterns, causal graph, matcher, adapters |
+| [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger) | Causal diagnosis, fix generation, auto-apply, explanation |
 | [agent-pld-metrics](https://github.com/kiyoshisasano/agent-pld-metrics) | Behavioral stability framework (PLD) |
 
----
+## Cogency Framework Mapping
 
-## Reproducible Examples
+Failure patterns are tagged with `cogency_tags` referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/articles/agent-failure-diagnostics.html). Rosen diagnoses input specification quality; Atlas diagnoses runtime symptoms. The mapping is an interpretive projection. See `src/llm_failure_atlas/resources/failures/*.yaml` for tags.
 
-**Try without an API key** (copy-paste-run):
+## Relationship to PLD
 
-```python
-from langchain_core.language_models import FakeListLLM
-from langchain_core.messages import HumanMessage, AIMessage
-from langgraph.graph import StateGraph, MessagesState, START, END
-from adapters.callback_handler import watch
+This system implements a single control step (analysis + intervention + evaluation) within the [PLD](https://github.com/kiyoshisasano/agent-pld-metrics) loop. It is not a PLD runtime. Root causes explain drift structurally; fixes feed Repair strategies; evaluate_fix provides structural reentry checks.
 
-llm = FakeListLLM(responses=[
-    "The revenue was $4.2M in Q3 2024, representing 31% year-over-year "
-    "growth. The Asia-Pacific segment contributed 45% of total revenue. "
-    "Operating margins expanded to 19.3% across all regions."
-])
+## Relationship to MAST
 
-def agent(state: MessagesState):
-    return {"messages": [AIMessage(content=llm.invoke(state["messages"]))]}
-
-workflow = StateGraph(MessagesState)
-workflow.add_node("agent", agent)
-workflow.add_edge(START, "agent")
-workflow.add_edge("agent", END)
-
-graph = watch(workflow.compile(), auto_diagnose=True)
-graph.invoke({"messages": [HumanMessage(content="What was Q3 revenue?")]})
-```
-
-**Regression test examples:**
-
-10 examples in [llm-failure-atlas](https://github.com/kiyoshisasano/llm-failure-atlas) under `examples/`. Each contains `log.json`, `matcher_output.json`, and `expected_debugger_output.json`.
-
-```bash
-python main.py ../llm-failure-atlas/examples/simple/matcher_output.json
-```
-
----
-
-## Internals
-
-**Root ranking formula:**
-
-```
-score = 0.5 * confidence + 0.3 * normalized_downstream + 0.2 * (1 - normalized_depth)
-```
-
-More downstream impact ranks higher, even with lower confidence. This reflects causal priority, not detection confidence alone.
-
-This tool implements a single control step within the [PLD](https://github.com/kiyoshisasano/agent-pld-metrics) loop: post-incident causal analysis and intervention decision.
+[MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST) (Cemri et al., NeurIPS 2025) is a taxonomy of 14 failure modes for multi-agent LLM systems, with 1600+ annotated traces. Atlas and MAST are complementary: MAST covers multi-agent system design and coordination failures (task decomposition, inter-agent conflict, orchestration); Atlas covers single-agent runtime behavior and infrastructure failures (tool loops, retrieval drift, cache bleeding, prompt injection). Two modes overlap directly: clarification_failure ↔ FM-2.2 and incorrect_output ↔ FM-3.4. See [MAST mapping analysis](docs/deep_analysis/mast_mapping_analysis.md) for the full comparison.
 
 ---
 
