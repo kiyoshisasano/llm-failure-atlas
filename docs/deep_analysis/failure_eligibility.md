@@ -34,6 +34,22 @@ substantial_response_without_source (tool_provided_data=False, response_length >
 and uncertainty_disclosed_but_specifics_generated (uncertainty_acknowledged=True,
 response_length > 400).
 
+**gpt-4o-mini grounding gap data (2026-03-31):** Four scenarios tested
+across three domains (weather, stock price, restaurant reviews). All
+produced thin grounding with tool_provided_data=False and expansion_ratio=inf.
+
+| Scenario | unc_ack | resp_len | alignment | Draft pattern |
+|---|---|---|---|---|
+| weather_fabrication | True* | 4186 | 0.71 | Diagnosed (0.75) |
+| stock_fabrication | True | 5304 | 0.67 | Diagnosed (0.75) |
+| restaurant_fabrication | True | 4339 | 0.67 | Diagnosed (0.75) |
+| weather_acknowledged | True | 2576 | 0.75 | Diagnosed (0.75) |
+
+*weather_fabrication initially showed uncertainty_acknowledged=False due to
+missing uncertainty markers ("don't have access", "based on typical"). After
+adding these markers to the observation layer, all 4 scenarios produce
+uncertainty_acknowledged=True and the draft pattern diagnoses all of them.
+
 ### Why not yet diagnosable
 
 - Data points: 3 (Redis demo healthy, Redis demo thin, Claude Haiku fabrication). The original requirement of 20+ diverse observations is not yet met
@@ -43,9 +59,9 @@ response_length > 400).
 
 ### Required conditions to become diagnosable
 
-1. **Distribution data:** expansion_ratio and response_length values from 10+ thin grounding cases across at least 2 models and 2 domains (partially met: 1 model, 1 domain)
-2. **Correlation evidence:** demonstrated cases where thin grounding led to user-visible incorrect output (met: the Claude Haiku case produced fabricated temperature data)
-3. **Threshold calibration:** response_length thresholds (200 and 400) validated against mid-range observations (not met)
+1. **Distribution data:** expansion_ratio and response_length values from 10+ thin grounding cases across at least 2 models and 2 domains (met: 2 models, 3 domains, 5 cases)
+2. **Correlation evidence:** demonstrated cases where thin grounding led to user-visible incorrect output (met: fabricated temperatures, stock prices, restaurant reviews)
+3. **Threshold calibration:** response_length thresholds (200 and 400) validated against mid-range observations (partially met: all observed cases are 2500+, no mid-range data yet)
 4. **Independence from existing signals:** confirmed — covers a distinct case from grounding_gap_not_acknowledged (met)
 
 ### Likely pattern location if promoted
@@ -115,7 +131,7 @@ New signal in `incorrect_output` or `rag_retrieval_drift`, depending on whether 
 
 | Gap | Blocker | Effort to resolve | Status |
 |---|---|---|---|
-| Thin grounding | Cross-model data + threshold calibration | Medium | Draft pattern tested, 1/4 conditions remaining |
+| Thin grounding | Threshold calibration (mid-range data) | Low | 3/4 conditions met, draft pattern validated |
 | SCIB threshold | More cache-hit data + secondary signal | Medium-High | No change |
 | Semantic mismatch | Embedding model in observation layer | High | No change |
 

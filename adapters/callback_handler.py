@@ -494,8 +494,11 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 "did not yield", "did not return",
                 "wasn't able", "was not able",
                 "service unavailable", "service issue",
+                "don't have access", "do not have access",
+                "can't get", "cannot get",
                 # Grounding qualification
                 "based on general", "based on historical",
+                "based on typical", "based on common",
                 "up to my last training",
                 "as of my last knowledge",
                 "i don't have", "i do not have",
@@ -510,6 +513,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 # Estimation disclosure
                 "approximately", "estimated",
                 "rough estimate", "general estimate",
+                "as of the latest available",
             ]
             uncertainty_acknowledged = any(m in response for m in uncertainty_markers)
 

@@ -426,16 +426,23 @@ class LangChainAdapter(BaseAdapter):
 
         # Did the response acknowledge uncertainty?
         uncertainty_markers = [
+            # Data absence
             "couldn't find", "could not find",
             "unable to find", "unable to retrieve",
             "no results", "no relevant results",
             "wasn't able", "was not able",
+            "don't have access", "do not have access",
+            "can't get", "cannot get",
+            # Grounding qualification
             "based on general", "based on historical",
+            "based on typical", "based on common",
             "i don't have", "i do not have",
+            # Data staleness
             "may not accurately reflect",
             "data is outdated", "outdated", "not current",
             "approximately", "estimated",
             "rough estimate", "general estimate",
+            "as of the latest available",
         ]
         uncertainty_acknowledged = any(
             m in response.lower() for m in uncertainty_markers

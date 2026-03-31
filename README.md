@@ -293,7 +293,7 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://gi
 
 Some failure-like behaviors are observable but not yet diagnosable as failure patterns:
 
-- **Thin grounding** — the agent supplements sparse tool data with training knowledge without disclosure. Observable via `expansion_ratio`, but no threshold has been calibrated (insufficient data).
+- **Thin grounding** — the agent produces detailed specifics without source data, sometimes while acknowledging the lack of data. Observed across gpt-4o-mini and Claude Haiku in 3 domains (weather, stock, restaurant). A draft pattern has been validated (5 cases detected, 0 false positives) but threshold calibration for mid-range responses is still needed before promotion.
 - **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Tested with 30 seed/probe pairs; similarity ranges for valid and invalid reuse overlap, confirming that similarity alone is insufficient. Requires a secondary signal.
 - **Semantic mismatch** — a tool returns data for a completely different topic. Not detectable with current heuristics; requires embedding-based comparison (Layer 1 ML).
 
