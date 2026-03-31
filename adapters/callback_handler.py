@@ -263,6 +263,9 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         ambiguous = {"it", "that", "this", "they", "them"}
         if any(w.lower() in ambiguous for w in words):
             score += 0.15
+        # Multiple possible intents
+        if any(w.lower() in {"or", "maybe", "either", "perhaps"} for w in words):
+            score += 0.15
         return {"ambiguity_score": min(1.0, round(score, 2))}
 
     def _build_interaction(self) -> dict:
