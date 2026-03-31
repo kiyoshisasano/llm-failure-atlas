@@ -16,8 +16,15 @@ cogency_tags: [tool_failure]
 #   state.progress_made   bool
 #   reasoning.replanned   bool
 #
-# Note: tools.repeat_count reflects consecutive repetitions of the same
-# or semantically equivalent tool call within a single reasoning turn.
+# Temporal semantics:
+#   tools.repeat_count counts same-name tool invocations within a turn.
+#   state.progress_made is False when the most-repeated tool's outputs
+#   are ALL negative (error/empty). This means progress is evaluated
+#   specifically for the looping tool, not globally. If a different tool
+#   succeeds but the repeated tool fails every time, progress_made=False.
+#
+#   This provides temporal correlation without requiring event ordering:
+#   "the tool that looped did not make progress across its calls."
 
 signal_extraction:
 

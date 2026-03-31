@@ -364,6 +364,10 @@ Failure patterns are tagged with `cogency_tags` referencing Cliff Rosen's [Diagn
 
 This system implements a single control step (analysis + intervention + evaluation) within the [PLD](https://github.com/kiyoshisasano/agent-pld-metrics) loop. It is not a PLD runtime. Root causes explain drift structurally; fixes feed Repair strategies; evaluate_fix provides structural reentry checks.
 
+## Relationship to MAST
+
+[MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST) (Cemri et al., NeurIPS 2025) is a taxonomy of 14 failure modes for multi-agent LLM systems, with 1600+ annotated traces. Atlas and MAST are complementary: MAST covers multi-agent system design and coordination failures (task decomposition, inter-agent conflict, orchestration); Atlas covers single-agent runtime behavior and infrastructure failures (tool loops, retrieval drift, cache bleeding, prompt injection). Two modes overlap directly: clarification_failure ↔ FM-2.2 and incorrect_output ↔ FM-3.4. See [MAST mapping analysis](docs/deep_analysis/mast_mapping_analysis.md) for the full comparison.
+
 ---
 
 ## License
