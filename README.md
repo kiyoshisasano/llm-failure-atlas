@@ -216,6 +216,16 @@ Scenarios use system prompts to induce specific failure behaviors, ensuring repr
 
 Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses. See [Cross-Model Validation](docs/cross_model_validation.md) for the full report.
 
+**Adapter verification status:**
+
+| Adapter | Verified | Notes |
+|---|---|---|
+| callback_handler (watch) | ✅ 3 models | gpt-4o-mini, Claude Haiku, Gemini 2.5 Flash |
+| langchain_adapter | ✅ Parity confirmed | Identical telemetry and detection to watch() |
+| langsmith_adapter | ✅ Parity confirmed | Identical telemetry and detection to langchain_adapter |
+| crewai_adapter | ⚠ Stage 1 verified | Functional but does not yet produce `state` or `grounding` telemetry. Core detection (tool calls, alignment, clarification) works; `agent_tool_call_loop` may not fire via `diagnose()` path |
+| redis_help_demo_adapter | ⚠ Stage 1 verified | Tested with Redis workshop; not re-verified after Phase 2 marker changes |
+
 Additional: 10/10 regression tests, 7/7 false positive tests (0 domain failures on healthy telemetry), 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PASS).
 
 **Redis Semantic Cache experiment:**
