@@ -94,7 +94,7 @@ and Gemini 2.5 Flash).
 
 ## False Positive Tests
 
-7 healthy telemetry scenarios tested against all 15 patterns (no API required).
+7 healthy telemetry scenarios tested against all 17 patterns (no API required).
 
 | Scenario | Domain Failures |
 |---|---|

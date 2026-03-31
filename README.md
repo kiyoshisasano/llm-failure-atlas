@@ -125,7 +125,7 @@ This is useful for understanding how detection works, testing custom adapters, o
 
 ## What It Detects
 
-15 failure patterns (12 domain + 3 meta) across 5 layers, connected by a causal graph with 12 edges.
+17 failure patterns (14 domain + 3 meta) across 5 layers, connected by a causal graph (17 nodes, 12 edges).
 
 **Domain failures:**
 
@@ -143,6 +143,8 @@ This is useful for understanding how detection works, testing custom adapters, o
 | `agent_tool_call_loop` | tool | Repeated tool invocation without progress |
 | `tool_result_misinterpretation` | tool | Misinterpretation of tool output |
 | `incorrect_output` | output | Final output misaligned with user intent |
+| `premature_termination` | output | Agent exited without producing output or error |
+| `failed_termination` | output | Agent exited due to execution error |
 
 **Meta failures** (model limitation indicators, not part of causal graph):
 
@@ -172,6 +174,8 @@ graph TD
     PIVR --> RRD
     RRD --> IO((incorrect_output))
     ATCL --> TRM[tool_result_misinterpretation]
+    PT([premature_termination])
+    FT([failed_termination])
 ```
 
 The same downstream failure can have multiple upstream causes. The graph makes competing causal paths explicit.
@@ -199,7 +203,7 @@ The callback handler infers telemetry fields not directly observable from agent 
 | `retrieval.adversarial_score` | Keyword scan of retrieved documents for injection patterns |
 | `context.truncated` | Input tokens exceed 85% of model context window |
 
-30 signals across 15 patterns. Each signal tracks observation quality: unobserved signals receive 0.6x confidence decay.
+34 signals across 17 patterns. Each signal tracks observation quality: unobserved signals receive 0.6x confidence decay.
 
 ---
 
@@ -327,10 +331,10 @@ The `state` section in telemetry contains local aggregations (per-tool call coun
 ```
 llm-failure-atlas/
   matcher.py                       # detection engine
-  failure_graph.yaml               # causal graph (15 nodes, 12 edges)
+  failure_graph.yaml               # causal graph (17 nodes, 12 edges)
   compute_kpi.py                   # 6 operational KPIs
   quickstart_demo.py               # end-to-end demo
-  failures/                        # 15 pattern definitions (YAML)
+  failures/                        # 17 pattern definitions (YAML)
   adapters/
     callback_handler.py            # real-time callback + watch()
     crewai_adapter.py              # CrewAI event listener
