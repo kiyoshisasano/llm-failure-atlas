@@ -6,7 +6,7 @@ The detection and pattern library for LLM agent failures. Defines failure patter
 
 | When | Use | What you get |
 |---|---|---|
-| Agent is running | Atlas `watch()` | Live detection, optional detection reporting |
+| Agent is running | Atlas `watch()` | Live detection (via `auto_diagnose=True`) |
 | You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal |
 | Atlas only (no debugger) | `auto_diagnose=True` | Detected failures (pattern matching + signals) + telemetry |
 | Full pipeline | `auto_pipeline=True` or `diagnose()` | Detection + diagnosis + explanation + fix proposal (with optional auto-apply) |
@@ -223,7 +223,7 @@ Both `watch()` and `diagnose()` code paths produce identical telemetry and diagn
 | callback_handler (watch) | ✅ 3 models | gpt-4o-mini, Claude Haiku, Gemini 2.5 Flash |
 | langchain_adapter | ✅ Parity confirmed | Identical telemetry and detection to watch() |
 | langsmith_adapter | ✅ Parity confirmed | Identical telemetry and detection to langchain_adapter |
-| crewai_adapter | ⚠ Stage 1 verified | Functional but does not yet produce `state` or `grounding` telemetry. Core detection (tool calls, alignment, clarification) works; `agent_tool_call_loop` may not fire via `diagnose()` path |
+| crewai_adapter | ⚠ Stage 1 verified | Functional but does not yet produce `state` or `grounding` telemetry. Core detection (tool calls, alignment, clarification) works; `agent_tool_call_loop` may not fire when using `diagnose()` (batch adapter path) |
 | redis_help_demo_adapter | ⚠ Stage 1 verified | Tested with Redis workshop; not re-verified after Phase 2 marker changes |
 
 Additional: 10/10 regression tests, 7/7 false positive tests (0 domain failures on healthy telemetry), 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PASS).
@@ -303,7 +303,7 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://gi
 
 Some failure-like behaviors are observable but not yet diagnosable as failure patterns:
 
-- **Thin grounding** — the agent produces detailed specifics without source data, sometimes while acknowledging the lack of data. Observed across gpt-4o-mini and Claude Haiku in 3 domains (weather, stock, restaurant). A draft pattern has been validated (5 cases detected, 0 false positives) but threshold calibration for mid-range responses is still needed before promotion.
+- **Thin grounding** — the agent produces detailed specifics without source data, sometimes while acknowledging the lack of data. Observed across gpt-4o-mini and Claude Haiku in 3 domains (weather, stock, restaurant). A draft pattern has been validated (5 cases detected, 0 false positives) but is not yet part of the detection set. Threshold calibration for mid-range responses is still needed before promotion.
 - **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Tested with 30 seed/probe pairs; similarity ranges for valid and invalid reuse overlap, confirming that similarity alone is insufficient. Requires a secondary signal.
 - **Semantic mismatch** — a tool returns data for a completely different topic. Not detectable with current heuristics; requires embedding-based comparison (Layer 1 ML).
 
