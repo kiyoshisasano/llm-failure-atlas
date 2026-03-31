@@ -9,7 +9,7 @@ The detection and pattern library for LLM agent failures. Defines failure patter
 | Agent is running | Atlas `watch()` | Live detection, optional auto-diagnosis |
 | You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal |
 | Atlas only (no debugger) | `auto_diagnose=True` | Detected failures + telemetry |
-| Full pipeline | `auto_pipeline=True` or `diagnose()` | Detection + diagnosis + explanation + fix |
+| Full pipeline | `auto_pipeline=True` or `diagnose()` | Detection + diagnosis + explanation + fix proposal (with optional auto-apply) |
 
 ```python
 # Detection only (Atlas)
@@ -204,23 +204,19 @@ The callback handler infers telemetry fields not directly observable from agent 
 
 ## Tested with Real Agents
 
-Verified with real LangGraph agents using both OpenAI and Anthropic APIs.
+Verified with real LangGraph agents under controlled scenarios, using both OpenAI and Anthropic APIs.
 
-**Stage 1 (gpt-4o-mini):**
-
-| Scenario | Detected failure | conf |
+| Scenario | gpt-4o-mini | Claude Haiku 4.5 |
 |---|---|---|
-| Flight to hotel pivot | `incorrect_output` | 0.7 |
-| Tool loop (5 retries) | `agent_tool_call_loop` | 0.7 |
-| Ambiguous cancel | `clarification_failure` | 0.7 |
+| Forced topic pivot | `incorrect_output` (0.7) | `incorrect_output` (0.7) |
+| Forced tool retry loop | `agent_tool_call_loop` (0.7) | `agent_tool_call_loop` (0.7) |
+| No clarification allowed | `clarification_failure` (0.7) | `clarification_failure` (0.7) |
 
-**Cross-model validation (Claude Haiku 4.5):**
+Scenarios use system prompts to induce specific failure behaviors, ensuring reproducibility across model versions. Without constraints, the two models handle the same inputs differently — Claude asks for clarification where gpt-4o-mini guesses, and Claude reports tool errors immediately where gpt-4o-mini retries. Atlas correctly reports 0 failures when no failure occurs, regardless of model.
 
-Claude Haiku behaves differently from gpt-4o-mini: it asks for clarification instead of guessing, does not retry failed tools without instruction, and does not pivot to alternative topics unprompted. Atlas correctly reported 0 failures for scenarios where Claude did not produce a failure. With system prompts that force failure-inducing behavior, Atlas detected all expected failures (3/3 PASS). Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses.
+Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses. See [Cross-Model Validation](docs/cross_model_validation.md) for the full report.
 
-See [Cross-Model Validation](docs/cross_model_validation.md) for the full report.
-
-Additional: 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PASS), watch() verification (3/3 PASS), false positive tests (7/7 PASS, 0 domain failures on healthy telemetry).
+Additional: 10/10 regression tests, 7/7 false positive tests (0 domain failures on healthy telemetry), 5 derailment tests (5/5 PASS), 25 observation logic checks (25/25 PASS).
 
 **Redis Semantic Cache experiment:**
 
