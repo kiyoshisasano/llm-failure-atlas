@@ -140,13 +140,24 @@ class LangChainAdapter(BaseAdapter):
         feedback = normalized.get("feedback", {})
         user_correction = feedback.get("user_correction", "")
 
-        # Check if any LLM step asked a clarification question
+        # Markers that indicate the agent is requesting clarification.
+        # Two groups: direct clarification questions and information
+        # requests that implicitly seek clarification (common in Claude).
+        clarification_markers = [
+            # Direct clarification
+            "could you clarify", "did you mean", "can you specify",
+            "what do you mean", "please clarify", "which one",
+            # Information requests (Claude-style clarification)
+            "could you provide", "could you please provide",
+            "can you provide", "i need the", "i need to know",
+            "what is the", "what is your", "which ",
+            "please provide", "please specify",
+        ]
         clarification = False
         for step in normalized["llm_steps"]:
             output = step.get("outputs", {}).get("text", "")
             if any(marker in output.lower() for marker in
-                   ["could you clarify", "did you mean", "can you specify",
-                    "what do you mean", "which one", "please clarify"]):
+                   clarification_markers):
                 clarification = True
                 break
 
@@ -168,14 +179,19 @@ class LangChainAdapter(BaseAdapter):
         llm_steps = normalized["llm_steps"]
         replanned = False
 
-        # Heuristic: if there are 2+ LLM calls and the second mentions
-        # correction/retry/different approach, consider it replanning
+        # Replanning markers that indicate a genuine change in approach.
+        # "let me try" and "actually" are excluded: they commonly appear
+        # before simple retries and do not indicate actual replanning.
+        replanning_markers = [
+            "different approach", "reconsider", "correction",
+            "let me reconsider", "try a different",
+            "change strategy", "switch to",
+        ]
+
         if len(llm_steps) >= 2:
             for step in llm_steps[1:]:
-                output = step.get("outputs", {}).get("text", "")
-                if any(word in output.lower() for word in
-                       ["let me try", "actually", "correction",
-                        "different approach", "reconsider"]):
+                output = step.get("outputs", {}).get("text", "").lower()
+                if any(m in output for m in replanning_markers):
                     replanned = True
                     break
 

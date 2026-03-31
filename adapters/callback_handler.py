@@ -267,11 +267,23 @@ class AtlasCallbackHandler(BaseCallbackHandler):
 
     def _build_interaction(self) -> dict:
         clarification = False
+        # Markers that indicate the agent is requesting clarification.
+        # Two groups: direct clarification questions and information
+        # requests that implicitly seek clarification (common in Claude).
+        CLARIFICATION_MARKERS = [
+            # Direct clarification
+            "could you clarify", "did you mean", "can you specify",
+            "what do you mean", "please clarify", "which one",
+            # Information requests (Claude-style clarification)
+            "could you provide", "could you please provide",
+            "can you provide", "i need the", "i need to know",
+            "what is the", "what is your", "which ",
+            "please provide", "please specify",
+        ]
         for call in self._llm_calls:
             output = call.get("output", "")
             if output and any(m in output.lower() for m in
-                              ["could you clarify", "did you mean",
-                               "can you specify", "what do you mean"]):
+                              CLARIFICATION_MARKERS):
                 clarification = True
                 break
 
@@ -315,12 +327,22 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         replanned = False
         hypothesis_count = 1  # Default: single interpretation
 
+        # Replanning markers that indicate a genuine change in approach.
+        # "let me try" is excluded: it commonly appears before simple
+        # retries (especially with Claude) and does not indicate actual
+        # replanning. "actually" is also excluded because it frequently
+        # precedes minor corrections rather than strategy changes.
+        # Retained markers require explicit mention of a new strategy.
+        REPLANNING_MARKERS = [
+            "different approach", "reconsider", "correction",
+            "let me reconsider", "try a different",
+            "change strategy", "switch to",
+        ]
+
         if len(llm_complete) >= 2:
             for call in llm_complete[1:]:
-                output = call.get("output", "")
-                if any(w in output.lower() for w in
-                       ["let me try", "actually", "correction",
-                        "different approach", "reconsider"]):
+                output = call.get("output", "").lower()
+                if any(m in output for m in REPLANNING_MARKERS):
                     replanned = True
                     break
 
@@ -512,6 +534,12 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         "gpt-4": 8192,
         "gpt-4-turbo": 128000,
         "gpt-3.5-turbo": 16385,
+        # Anthropic models
+        "claude-haiku-4-5": 200000,
+        "claude-sonnet-4": 200000,
+        "claude-opus-4": 200000,
+        "claude-3-5-haiku": 200000,
+        "claude-3-5-sonnet": 200000,
     }
     # Fraction of context window used → consider truncation risk
     TRUNCATION_THRESHOLD = 0.85
