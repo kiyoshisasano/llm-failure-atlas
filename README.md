@@ -326,6 +326,50 @@ The `state` section in telemetry contains local aggregations (per-tool call coun
 
 ---
 
+## Design Positioning
+
+This project differs from other approaches to LLM agent reliability:
+
+| Approach | How it works | Tradeoff |
+|---|---|---|
+| LLM-as-a-judge | LLM evaluates agent output | Probabilistic, non-deterministic, expensive |
+| Observability platforms | Collect and display traces | Data collection, not diagnosis |
+| Runtime verification | Monitor against formal specifications | Requires formal specs per agent |
+| Guardrails / validators | Block or filter inputs/outputs | Prevention, not diagnosis |
+| **This project** | **Deterministic signal extraction + causal graph** | **Explainable but heuristic-bound** |
+
+Atlas occupies a specific position: a deterministic diagnosis layer that produces the same result for the same input, explains why it reached that conclusion, and does not require ML or formal specifications. This makes it auditable and reproducible, at the cost of being limited to what keyword/threshold heuristics can observe.
+
+## Telemetry Model
+
+This project does not define a universal telemetry standard. Instead, it consumes framework-specific telemetry via adapters and maps it into a deterministic signal space.
+
+| System | Approach |
+|---|---|
+| OpenTelemetry GenAI | Standardized trace schema for LLM calls |
+| OpenInference | Unified observability attributes for AI |
+| This project | Signal extraction layer on top of arbitrary telemetry |
+
+This allows portability without requiring instrumentation changes. If a future standardized tracing format emerges, a new adapter can map it into Atlas's signal space without changing the matcher or patterns.
+
+## Scope of Failures
+
+Atlas focuses on single-agent runtime failures:
+
+- Reasoning failures (clarification, commitment, assumption persistence)
+- Tool interaction failures (loops, misinterpretation)
+- Retrieval and cache failures (drift, injection, truncation)
+- Output failures (misalignment, incorrect result)
+- Termination failures (silent exit, error-driven exit)
+
+It does not cover:
+
+- Multi-agent coordination failures (see [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST))
+- Semantic correctness beyond keyword heuristics (requires embedding/ML)
+- Infrastructure failures outside the agent runtime (network, deployment)
+
+---
+
 ## Structure
 
 ```
