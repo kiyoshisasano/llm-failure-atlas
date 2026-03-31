@@ -279,7 +279,7 @@ def main():
 
     # Add debugger to path for fix_templates import
     import os
-    debugger_dir = str(Path(__file__).parent.parent)
+    debugger_dir = str(Path(__file__).parent.parent.parent / "agent-failure-debugger")
     if debugger_dir not in sys.path:
         sys.path.insert(0, debugger_dir)
 

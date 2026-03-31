@@ -13,7 +13,7 @@ from pathlib import Path
 
 CALIBRATION_DIR = Path(__file__).parent
 ATLAS_DIR = CALIBRATION_DIR.parent
-DEBUGGER_DIR = ATLAS_DIR.parent / "debugger"
+DEBUGGER_DIR = ATLAS_DIR.parent / "agent-failure-debugger"
 VALIDATION_DIR = ATLAS_DIR / "validation"
 
 sys.path.insert(0, str(ATLAS_DIR))
