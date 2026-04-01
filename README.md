@@ -476,7 +476,7 @@ Atlas uses multiple evaluation methods across different layers:
 
 **What is not yet evaluated:**
 
-- No benchmark against an external labeled single-agent failure corpus — such a dataset does not yet exist in the community. MAST-Data traces are multi-agent and not directly compatible
+- Quantitative detection accuracy (precision/recall) against external agent benchmarks. Candidate datasets exist — BFCL (tool-calling correctness), ToolBench (API usage trajectories), WebArena (web task traces), SWE-bench (code editing traces), GAIA (multi-step QA) — but adapting their traces and success/failure labels to Atlas's failure pattern taxonomy has not yet been done. Taxonomy-level comparison has been completed against MAST (multi-agent, NeurIPS 2025) and Rosen's Cogency Framework (specification quality)
 - Real-world production validation depends on developer feedback (traces welcome)
 
 Atlas patterns have been mapped to [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST) for taxonomy comparison (see [MAST mapping analysis](docs/deep_analysis/mast_mapping_analysis.md)).
