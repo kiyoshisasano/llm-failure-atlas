@@ -107,7 +107,7 @@ Explanation:
   Action: Review the proposed fix before applying.
 ```
 
-When no failure is detected but grounding signals indicate a risk:
+When no failure is detected but signals indicate a potential risk:
 
 ```
 Failures:   none detected
