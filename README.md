@@ -376,13 +376,15 @@ Requires `pip install agent-failure-debugger`. See [Quick Start Guide](docs/quic
 - Detect semantic mismatch (requires embeddings)
 - Analyze multi-agent system coordination
 
+These reflect the current scope of deterministic, heuristic-based detection — not permanent design limits. The architecture (adapter → signal → matcher → graph) is designed to accommodate new signal sources, including embedding-based or ML-assisted layers, without changing the core pipeline.
+
 See [Limitations & FAQ](docs/limitations_faq.md) for details.
 
 ---
 
 ## Known Limitations
 
-Some failure-like behaviors are observable but not yet diagnosable as failure patterns:
+Some failure-like behaviors are observable but not yet diagnosable as failure patterns. Each has specific conditions for promotion — they are not permanently excluded but require additional data, signals, or calibration:
 
 - **Thin grounding** — the agent produces detailed specifics without source data, sometimes while acknowledging the lack of data. Observed across gpt-4o-mini and Claude Haiku in 3 domains (weather, stock, restaurant). A draft pattern has been validated (5 cases detected, 0 false positives) but is not yet part of the detection set. Threshold calibration for mid-range responses is still needed before promotion.
 - **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Tested with 30 seed/probe pairs; similarity ranges for valid and invalid reuse overlap, confirming that similarity alone is insufficient. Requires a secondary signal.
@@ -414,7 +416,7 @@ This project differs from other approaches to LLM agent reliability:
 | Guardrails / validators | Block or filter inputs/outputs | Prevention, not diagnosis |
 | **This project** | **Deterministic signal extraction + causal graph** | **Explainable but heuristic-bound** |
 
-Atlas occupies a specific position: a deterministic diagnosis layer that produces the same result for the same input, explains why it reached that conclusion, and does not require ML or formal specifications. This makes it auditable and reproducible, at the cost of being limited to what keyword/threshold heuristics can observe.
+Atlas occupies a specific position: a deterministic diagnosis layer that produces the same result for the same input, explains why it reached that conclusion, and does not require ML or formal specifications. This makes it auditable and reproducible, at the cost of being limited to what keyword/threshold heuristics can observe. This deterministic core is intended as a stable foundation — additional signal layers (embedding-based, ML-assisted) can be introduced as optional advisory inputs without breaking reproducibility.
 
 ## Telemetry Model
 
@@ -448,11 +450,13 @@ Atlas focuses on single-agent runtime failures:
 - Output failures (misalignment, incorrect result)
 - Termination failures (silent exit, error-driven exit). These describe how execution ended, not necessarily the root cause
 
-It does not cover:
+It does not currently cover:
 
 - Multi-agent coordination failures (see [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST))
 - Semantic correctness beyond keyword heuristics (requires embedding/ML)
 - Infrastructure failures outside the agent runtime (network, deployment)
+
+The pattern set and causal graph are versioned and extensible. New patterns can be added by defining a YAML file and connecting it to the graph; new signal sources can be introduced via adapters without modifying the matcher or existing patterns.
 
 ## Evaluation Status
 
