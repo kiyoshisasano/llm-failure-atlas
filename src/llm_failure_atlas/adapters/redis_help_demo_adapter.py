@@ -11,7 +11,7 @@ will have different response structures and require their own adapters.
 Converts the /api/help/chat response into Atlas matcher input format.
 
 Workshop repository:
-    https://github.com/redis-developer/movie-recommender-rag-semantic-cache-workshop
+    https://github.com/bhavana-giri/movie-recommender-rag-semantic-cache-workshop
 
 Usage:
     from adapters.redis_help_demo_adapter import RedisHelpDemoAdapter

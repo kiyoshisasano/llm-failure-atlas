@@ -205,7 +205,7 @@ This is langchain format. The crewai adapter expects a CrewOutput object or Crew
 }
 ```
 
-This adapter is specific to the [Redis movie-recommender workshop](https://github.com/redis-developer/movie-recommender-rag-semantic-cache-workshop). It is NOT a general-purpose Redis adapter.
+This adapter is specific to the [Redis movie-recommender workshop](https://github.com/bhavana-giri/movie-recommender-rag-semantic-cache-workshop). It is NOT a general-purpose Redis adapter.
 
 **Common invalid input:**
 
