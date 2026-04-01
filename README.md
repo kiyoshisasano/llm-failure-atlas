@@ -456,19 +456,24 @@ It does not cover:
 
 ## Evaluation Status
 
-Atlas uses three evaluation methods:
+Atlas uses multiple evaluation methods across different layers:
 
-**Regression and false positive testing:** 17/17 regression PASS, 7/7 false positive PASS (healthy telemetry produces 0 domain failures), 9/9 cross-model PASS.
+**Evaluation dataset (evaluation/):** 10 cases with ground truth (expected root cause, expected causal path, expected conflicts). `metrics.py` computes detection precision/recall/F1, root accuracy, root MRR, path exact/partial match, conflict accuracy, and explanation faithfulness/signal coverage/causal order. Run `python evaluation/run_eval.py` to reproduce.
+
+**Validation set (validation/):** 30 scenarios across 9 categories (adversarial, ambiguous, clean, false positive, missing fields, multi-cause, partial signal, regression, tool failure) with 30 human annotations (root_score, path_score, explanation_score on a 0–2 scale). `run_real_eval.py` runs matcher → debugger → explainer, performs automatic weak signal checks and error classification (false_positive, false_negative, wrong_root, over_detection, threshold_boundary), and cross-references against human judgment.
+
+**Regression and false positive testing:** 10/10 regression PASS, 7/7 false positive PASS (healthy telemetry produces 0 domain failures), 9/9 cross-model PASS.
 
 **Mutation testing:** Healthy telemetry is mutated to inject each failure pattern. 13/14 domain patterns are testable (tool_result_misinterpretation requires adapter fields no adapter currently produces). Mutation score: 13/13 KILLED (100% of testable patterns detected when injected). Run `python evaluation/mutation_eval.py` to reproduce.
 
 **Sensitivity analysis:** Numeric thresholds are swept to identify transition points where detection flips. All patterns show clean transitions at documented thresholds with no unstable regions. Run `python evaluation/sensitivity_eval.py` to reproduce.
 
+**Cross-model validation:** Tested with real APIs (gpt-4o-mini, Claude Haiku 4.5, Gemini 2.5 Flash) under controlled LangGraph scenarios. Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses. See [Cross-Model Validation](docs/cross_model_validation.md).
+
 **What is not yet evaluated:**
 
-- No ground-truth failure labels from real-world traces (precision/recall against external datasets)
-- No evaluation against annotated benchmarks (MAST-Data traces are multi-agent, not compatible)
-- Detection quality is measured by reproducibility and mutation coverage, not by labeled corpora
+- No benchmark against an external labeled single-agent failure corpus — such a dataset does not yet exist in the community. MAST-Data traces are multi-agent and not directly compatible
+- Real-world production validation depends on developer feedback (traces welcome)
 
 Atlas patterns have been mapped to [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST) for taxonomy comparison (see [MAST mapping analysis](docs/deep_analysis/mast_mapping_analysis.md)).
 
