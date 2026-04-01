@@ -1,8 +1,15 @@
 # LLM Failure Atlas
 
+[![PyPI version](https://badge.fury.io/py/llm-failure-atlas.svg)](https://pypi.org/project/llm-failure-atlas/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://pypi.org/project/llm-failure-atlas/)
+
 The detection and pattern library for LLM agent failures. Defines failure patterns, signals, and adapters. Fully deterministic, no ML required.
 
-**Atlas detects.** For root cause diagnosis, explanation, and fixes, use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
+```bash
+pip install llm-failure-atlas
+```
+
+**Atlas detects.** For root cause diagnosis, explanation, and fixes, use [agent-failure-debugger](https://pypi.org/project/agent-failure-debugger/).
 
 | When | Use | What you get |
 |---|---|---|
