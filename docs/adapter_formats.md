@@ -4,23 +4,35 @@ Each adapter converts a raw log from a specific framework into the telemetry for
 
 ## Telemetry Contract (what the matcher receives)
 
-All adapters produce this same output structure:
+All adapters produce this same output structure. Fields marked `# optional` are produced by some adapters but not all — patterns that depend on them will not fire if absent.
 
 ```python
 {
     "input":       {"ambiguity_score": float},
     "interaction": {"clarification_triggered": bool, "user_correction_detected": bool},
-    "reasoning":   {"replanned": bool, "hypothesis_count": int},
+    "reasoning":   {"replanned": bool, "hypothesis_count": int,
+                    # optional: "contradiction_detected": bool, "hypothesis_abandoned": bool
+                   },
     "cache":       {"hit": bool, "similarity": float, "query_intent_similarity": float},
-    "retrieval":   {"skipped": bool},
+    "retrieval":   {"skipped": bool,
+                    # optional: "contains_instruction": bool, "override_detected": bool,
+                    #           "adversarial_score": float, "expected_coverage": float
+                   },
     "response":    {"alignment_score": float},
-    "tools":       {"call_count": int, "repeat_count": int, "soft_error_count": int, ...},
+    "tools":       {"call_count": int, "repeat_count": int, "soft_error_count": int,
+                    # optional: "error_count": int, "unique_tools": int
+                   },
     "state":       {"progress_made": bool, "tool_progress": dict,
                     "any_tool_looping": bool, "output_produced": bool,
                     "chain_error_occurred": bool},
     "grounding":   {"tool_provided_data": bool, "uncertainty_acknowledged": bool,
                     "response_length": int, "source_data_length": int,
                     "expansion_ratio": float},
+    # optional sections (adapter-dependent):
+    # "context":     {"truncated": bool, "critical_info_present": bool,
+    #                 "external_instruction_weight": float},
+    # "instruction": {"system_priority_respected": bool},
+    # "output":      {"repair_attempted": bool, "regenerated": bool, "repair_quality": float},
 }
 ```
 
@@ -222,3 +234,166 @@ This is langchain format. The redis adapter expects `answer`, `sources`, and `fr
 ## Bypassing Adapters (Direct Telemetry)
 
 If you already have telemetry in the matcher format, or want to test specific signal combinations, bypass adapters entirely. See the "Advanced / debugging" section in the [Quick Start Guide](quickstart.md).
+
+---
+
+## Writing a Custom Adapter
+
+If your agent uses a custom orchestration (not LangChain, CrewAI, etc.), you can write an adapter that maps your trace schema to Atlas's telemetry format. The simplest reference implementation is `langchain_adapter.py`.
+
+### Step 1: Subclass BaseAdapter
+
+```python
+from llm_failure_atlas.adapters.base_adapter import BaseAdapter
+
+class MyAdapter(BaseAdapter):
+    source = "my_platform"
+
+    def normalize(self, raw_log: dict) -> dict:
+        """Convert your raw log into an intermediate structure.
+        Extract: user query, agent response, tool calls, errors, feedback."""
+        return {
+            "query": raw_log.get("user_input", ""),
+            "response": raw_log.get("agent_output", ""),
+            "tool_calls": raw_log.get("tool_calls", []),
+            "errors": raw_log.get("errors", []),
+            "feedback": raw_log.get("feedback", {}),
+        }
+
+    def extract_features(self, normalized: dict) -> dict:
+        """Map your intermediate structure to the telemetry contract."""
+        return {
+            "input": self._build_input(normalized),
+            "interaction": self._build_interaction(normalized),
+            "reasoning": self._build_reasoning(normalized),
+            "cache": self._build_cache(normalized),
+            "retrieval": self._build_retrieval(normalized),
+            "response": self._build_response(normalized),
+            "tools": self._build_tools(normalized),
+            "state": self._build_state(normalized),
+            "grounding": self._build_grounding(normalized),
+        }
+```
+
+### Step 2: Understand the telemetry contract
+
+All adapters produce the same output structure. Missing fields default to `False`/`0` and patterns that depend on them will not fire — this is safe but reduces coverage.
+
+The telemetry sections, with their fields and how to compute them:
+
+**`input`** — User request characteristics
+
+| Field | Type | How to compute |
+|---|---|---|
+| `ambiguity_score` | float (0–1) | Word count normalization + pronoun/vague term density. Higher = more ambiguous. Simple approach: `min(1.0, word_count * 0.05 + pronoun_count * 0.15)` |
+
+**`interaction`** — User-agent interaction signals
+
+| Field | Type | How to compute |
+|---|---|---|
+| `clarification_triggered` | bool | Agent response contains clarification phrases ("could you clarify", "did you mean", "which one", etc.) |
+| `user_correction_detected` | bool | Feedback contains user correction, or agent response admits a mistake and pivots |
+
+**`reasoning`** — Agent reasoning behavior
+
+| Field | Type | How to compute |
+|---|---|---|
+| `replanned` | bool | Agent changed approach after initial attempt (replanning markers in LLM output) |
+| `hypothesis_count` | int | Number of candidate interpretations considered (default: 1) |
+
+**`cache`** — Semantic cache behavior (set all to defaults if no cache)
+
+| Field | Type | How to compute |
+|---|---|---|
+| `hit` | bool | Cache was used for this query |
+| `similarity` | float (0–1) | Cache similarity score |
+| `query_intent_similarity` | float (0–1) | Intent similarity between cached query and current query. Lower = more likely intent mismatch |
+
+**`retrieval`** — Retrieval/RAG behavior
+
+| Field | Type | How to compute |
+|---|---|---|
+| `skipped` | bool | Retrieval step was skipped (e.g., due to cache hit) |
+
+**`response`** — Output quality signals
+
+| Field | Type | How to compute |
+|---|---|---|
+| `alignment_score` | float (0–1) | Word overlap between query and response, minus topic-mismatch and negation penalties |
+
+**`tools`** — Tool call patterns
+
+| Field | Type | How to compute |
+|---|---|---|
+| `call_count` | int | Total tool invocations |
+| `repeat_count` | int | Max times the same tool was called with the same arguments, minus 1 |
+| `soft_error_count` | int | Tool calls that returned successfully but output contains error markers ("error", "not found", "empty", "no results", etc.) |
+| `error_count` | int | Tool calls that raised exceptions |
+
+**`state`** — Execution state (important for tool loop and termination detection)
+
+| Field | Type | How to compute |
+|---|---|---|
+| `progress_made` | bool | At least one tool returned usable (non-error) output |
+| `any_tool_looping` | bool | Any single tool called 3+ times with zero successes |
+| `tool_progress` | dict | Per-tool breakdown: `{tool_name: {calls, successes, failures, progress}}` |
+| `output_produced` | bool | Agent produced a non-empty final response |
+| `chain_error_occurred` | bool | Execution ended with an exception |
+
+**`grounding`** — Evidence grounding (important for hallucination-adjacent detection)
+
+| Field | Type | How to compute |
+|---|---|---|
+| `tool_provided_data` | bool | At least one tool returned non-error, non-empty output |
+| `uncertainty_acknowledged` | bool | Response contains uncertainty language ("couldn't find", "based on general", "no results", etc.) |
+| `response_length` | int | Character count of final response |
+| `source_data_length` | int | Total character count of usable tool outputs |
+| `expansion_ratio` | float | `response_length / source_data_length` (0.0 if no source data and no response, inf if response but no source data) |
+
+### Step 3: Know which patterns fire from which fields
+
+Not all fields are needed. Implement what your trace exposes and the corresponding patterns will activate:
+
+| Pattern | Required fields |
+|---|---|
+| `clarification_failure` | `input.ambiguity_score`, `interaction.clarification_triggered`, `reasoning.hypothesis_count` |
+| `premature_model_commitment` | `input.ambiguity_score`, `interaction.clarification_triggered`, `interaction.user_correction_detected`, `reasoning.replanned` |
+| `incorrect_output` | `response.alignment_score`, `interaction.user_correction_detected`, `grounding.*` |
+| `agent_tool_call_loop` | `tools.repeat_count`, `state.any_tool_looping`, `reasoning.replanned` |
+| `premature_termination` | `state.output_produced`, `state.chain_error_occurred`, `tools.call_count` |
+| `failed_termination` | `state.output_produced`, `state.chain_error_occurred` |
+| `semantic_cache_intent_bleeding` | `cache.hit`, `cache.similarity`, `cache.query_intent_similarity`, `retrieval.skipped`, `response.alignment_score` |
+| `rag_retrieval_drift` | `cache.hit`, `cache.similarity`, `retrieval.skipped`, `response.alignment_score` |
+| `prompt_injection_via_retrieval` | `retrieval.contains_instruction`, `retrieval.override_detected`, `retrieval.adversarial_score` |
+| `context_truncation_loss` | `context.truncated`, `context.critical_info_present`, `retrieval.expected_coverage` |
+| `instruction_priority_inversion` | `instruction.system_priority_respected`, `context.external_instruction_weight` |
+| `repair_strategy_failure` | `output.repair_attempted`, `output.regenerated`, `output.repair_quality` |
+| `assumption_invalidation_failure` | `reasoning.hypothesis_count`, `reasoning.contradiction_detected`, `reasoning.hypothesis_abandoned` |
+| `tool_result_misinterpretation` | `tool.output_valid`, `tool.output_value`, `state.updated_correctly`, `agent.decision_value` (no adapter currently produces these) |
+
+### Step 4: Minimal viable adapter
+
+If your trace has tool calls and a final response but no cache or retrieval, a minimal adapter that implements only `tools`, `state`, `grounding`, `response`, `interaction`, and `input` will still detect: `incorrect_output`, `agent_tool_call_loop`, `premature_termination`, `failed_termination`, `clarification_failure`, and `premature_model_commitment`.
+
+Cache, retrieval, and instruction fields can return defaults:
+
+```python
+def _build_cache(self, normalized):
+    return {"hit": False, "similarity": 0.0, "query_intent_similarity": 1.0}
+
+def _build_retrieval(self, normalized):
+    return {"skipped": False}
+```
+
+### Step 5: Register and use
+
+Your adapter does not need to be registered in any central file. Use it directly:
+
+```python
+adapter = MyAdapter()
+matcher_input = adapter.build_matcher_input(raw_log)
+```
+
+Or with the full pipeline via direct telemetry (see [Quick Start Guide](quickstart.md#advanced--debugging-direct-telemetry)).
+
+To use with `diagnose()`, add your adapter class to `diagnose.py`'s `_ADAPTERS` dict, or bypass `diagnose()` and call `run_pipeline()` directly with your matcher output.
