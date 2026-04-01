@@ -13,11 +13,9 @@ pip install llm-failure-atlas
 
 | When | Use | What you get |
 |---|---|---|
-| Agent is running | Atlas `watch()` | Live detection (via `auto_diagnose=True`) |
-| You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal |
-| Atlas only (no debugger) | `auto_diagnose=True` | Detected failures (pattern matching + signals) |
-| Full pipeline (runtime) | `auto_pipeline=True` | Detection + diagnosis during execution |
-| Full pipeline (post-hoc) | `diagnose()` | Diagnosis from saved logs |
+| Agent is running (detection only) | `watch(graph, auto_diagnose=True)` | Detected failures (pattern matching + signals) |
+| Agent is running (full pipeline) | `watch(graph, auto_pipeline=True)` | Detection + diagnosis + fix proposal during execution |
+| You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal from saved logs |
 
 ```python
 # Detection only (Atlas)
@@ -58,7 +56,7 @@ result = graph.invoke({"messages": [HumanMessage(content="...")]})
 
 **Flags:**
 - `auto_diagnose=True` — run Atlas detection only (pattern matching + signals, no causal analysis)
-- `auto_pipeline=True` — also run the [debugger](https://pypi.org/project/agent-failure-debugger/) pipeline (root cause, explanation, fix proposal) automatically
+- `auto_pipeline=True` — also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause, explanation, fix proposal) automatically
 
 The original graph behavior is unchanged. Requires `pip install langchain-core`. Core pipeline requires only `pyyaml`.
 
@@ -149,7 +147,7 @@ print(result["confidence"])   # 0.7
 print(result["signals"])      # which signals fired
 ```
 
-This is useful for understanding how detection works, testing custom adapters, or debugging signal behavior. For full pipeline usage (diagnosis, explanation, fixes), use [agent-failure-debugger](https://pypi.org/project/agent-failure-debugger/).
+This is useful for understanding how detection works, testing custom adapters, or debugging signal behavior. For full pipeline usage (diagnosis, explanation, fixes), use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
 
 ---
 
@@ -306,7 +304,7 @@ class MyAdapter(BaseAdapter):
 [Your Agent] → Adapter → Telemetry → Matcher → Debugger → Fix + Explanation
 ```
 
-The Atlas provides structure, detection, and adapters. The [debugger](https://pypi.org/project/agent-failure-debugger/) provides causal interpretation, explanation, fix generation, and auto-apply.
+The Atlas provides structure, detection, and adapters. The [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) provides causal interpretation, explanation, fix generation, and auto-apply.
 
 ---
 
@@ -335,7 +333,7 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://py
 
 ---
 
-## Minimal Working Example
+## Full Pipeline Example (Atlas + Debugger)
 
 ```python
 from agent_failure_debugger import diagnose
