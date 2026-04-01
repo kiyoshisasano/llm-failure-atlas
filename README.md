@@ -15,8 +15,9 @@ pip install llm-failure-atlas
 |---|---|---|
 | Agent is running | Atlas `watch()` | Live detection (via `auto_diagnose=True`) |
 | You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal |
-| Atlas only (no debugger) | `auto_diagnose=True` | Detected failures (pattern matching + signals) + telemetry |
-| Full pipeline | `auto_pipeline=True` or `diagnose()` | Detection + diagnosis + explanation + fix proposal (with optional auto-apply) |
+| Atlas only (no debugger) | `auto_diagnose=True` | Detected failures (pattern matching + signals) |
+| Full pipeline (runtime) | `auto_pipeline=True` | Detection + diagnosis during execution |
+| Full pipeline (post-hoc) | `diagnose()` | Diagnosis from saved logs |
 
 ```python
 # Detection only (Atlas)
@@ -331,6 +332,53 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://gi
 - **Signal uniqueness** — one definition per signal across all patterns.
 - **Learning is suggestion-only** — patterns, graph, and templates are never auto-modified.
 - **Observation quality** — unobserved signals receive 0.6x confidence decay.
+
+---
+
+## Minimal Working Example
+
+```python
+from agent_failure_debugger import diagnose
+
+raw_log = {
+    "inputs": {"query": "Change my flight to tomorrow morning"},
+    "outputs": {"response": "I've found several hotels near the airport for you."},
+    "steps": [
+        {"type": "llm", "outputs": {"text": "Let me check available flights."}},
+        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
+         "outputs": {"flights": []}, "error": None},
+        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
+         "outputs": {"flights": []}, "error": None},
+        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
+         "outputs": {"flights": []}, "error": None},
+        {"type": "llm", "outputs": {"text": "I've found several hotels near the airport."}}
+    ],
+    "feedback": {"user_correction": "I asked about flights, not hotels."}
+}
+
+result = diagnose(raw_log, adapter="langchain")
+print(result["summary"]["root_cause"])
+```
+
+Requires `pip install agent-failure-debugger`. See [Quick Start Guide](docs/quickstart.md) for more usage patterns.
+
+## Common Mistakes
+
+| Problem | Cause | Fix |
+|---|---|---|
+| "0 failures detected" | Adapter got insufficient data | Provide complete trace with tool calls |
+| Wrong results | Input format doesn't match adapter | See [Adapter Formats](docs/adapter_formats.md) |
+| Pattern doesn't fire | Adapter doesn't produce required fields | Check [Adapter Coverage](docs/limitations_faq.md#adapter-coverage) |
+
+**⚠ No error is raised for wrong inputs.** The system silently returns zero failures if the adapter cannot extract signals.
+
+## This Tool Cannot
+
+- Verify factual correctness of agent responses
+- Detect semantic mismatch (requires embeddings)
+- Analyze multi-agent system coordination
+
+See [Limitations & FAQ](docs/limitations_faq.md) for details.
 
 ---
 
