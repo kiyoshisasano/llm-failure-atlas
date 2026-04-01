@@ -436,9 +436,9 @@ Atlas does not operate on full event sequences. Telemetry is a summarized state 
 
 - Temporal patterns are approximated via aggregated signals (e.g., per-tool repeat counts with success/failure tracking)
 - Exact step-by-step reasoning or ordering is not reconstructed
-- Some trajectory-level failures (e.g., premature stopping after partial progress) are intentionally out of scope
+- Some trajectory-level failures (e.g., premature stopping after partial progress) are not addressed by the current telemetry model
 
-This is a design tradeoff for determinism and simplicity.
+This is a design tradeoff for determinism and simplicity in the current implementation.
 
 ## Scope of Failures
 
