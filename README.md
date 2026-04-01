@@ -58,7 +58,7 @@ result = graph.invoke({"messages": [HumanMessage(content="...")]})
 
 **Flags:**
 - `auto_diagnose=True` — run Atlas detection only (pattern matching + signals, no causal analysis)
-- `auto_pipeline=True` — also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause, explanation, fix proposal) automatically
+- `auto_pipeline=True` — also run the [debugger](https://pypi.org/project/agent-failure-debugger/) pipeline (root cause, explanation, fix proposal) automatically
 
 The original graph behavior is unchanged. Requires `pip install langchain-core`. Core pipeline requires only `pyyaml`.
 
@@ -149,7 +149,7 @@ print(result["confidence"])   # 0.7
 print(result["signals"])      # which signals fired
 ```
 
-This is useful for understanding how detection works, testing custom adapters, or debugging signal behavior. For full pipeline usage (diagnosis, explanation, fixes), use [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger).
+This is useful for understanding how detection works, testing custom adapters, or debugging signal behavior. For full pipeline usage (diagnosis, explanation, fixes), use [agent-failure-debugger](https://pypi.org/project/agent-failure-debugger/).
 
 ---
 
@@ -306,7 +306,7 @@ class MyAdapter(BaseAdapter):
 [Your Agent] → Adapter → Telemetry → Matcher → Debugger → Fix + Explanation
 ```
 
-The Atlas provides structure, detection, and adapters. The [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) provides causal interpretation, explanation, fix generation, and auto-apply.
+The Atlas provides structure, detection, and adapters. The [debugger](https://pypi.org/project/agent-failure-debugger/) provides causal interpretation, explanation, fix generation, and auto-apply.
 
 ---
 
