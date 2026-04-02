@@ -450,6 +450,8 @@ Atlas focuses on single-agent runtime failures:
 - Output failures (misalignment, incorrect result)
 - Termination failures (silent exit, error-driven exit). These describe how execution ended, not necessarily the root cause
 
+The same patterns also apply to non-LLM systems with similar step/retry/termination structures. See [examples/workflow_pipeline](examples/workflow_pipeline/) (order processing pipeline) and [examples/api_orchestration](examples/api_orchestration/) (multi-API service) for demonstrations with no LLM involved.
+
 It does not currently cover:
 
 - Multi-agent coordination failures (see [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST))
@@ -508,7 +510,7 @@ llm-failure-atlas/
       update_policy.py                  # suggestion-only learning
   evaluation/                            # mutation + sensitivity tests
   validation/                            # 30 scenarios + annotations
-  examples/                              # 10 reproducible test cases
+  examples/                              # 12 test cases (10 agent + 2 non-LLM)
   docs/                                  # analysis + playbook
 ```
 
