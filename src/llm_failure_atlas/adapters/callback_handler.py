@@ -210,11 +210,36 @@ class AtlasCallbackHandler(BaseCallbackHandler):
 
         # Always capture output (last one wins)
         if isinstance(outputs, dict):
-            self._final_output = (
-                outputs.get("output", "")
-                or outputs.get("response", "")
-                or str(next(iter(outputs.values()), ""))
-            )
+            # LangGraph: extract from messages list
+            messages = outputs.get("messages", [])
+            if messages:
+                # Walk messages in reverse to find the last AI message
+                msg_list = messages if isinstance(messages, list) else [messages]
+                for msg in reversed(msg_list):
+                    # AIMessage object (langchain_core)
+                    if hasattr(msg, "content") and hasattr(msg, "type"):
+                        if msg.type == "ai" and msg.content:
+                            self._final_output = msg.content
+                            break
+                    # Dict format
+                    elif isinstance(msg, dict):
+                        if msg.get("role") == "assistant" and msg.get("content"):
+                            self._final_output = msg["content"]
+                            break
+
+            # Fallback: standard output/response keys
+            if not self._final_output:
+                self._final_output = (
+                    outputs.get("output", "")
+                    or outputs.get("response", "")
+                    or ""
+                )
+                # Last resort: first non-empty value
+                if not self._final_output:
+                    for v in outputs.values():
+                        if isinstance(v, str) and v.strip():
+                            self._final_output = v
+                            break
         elif isinstance(outputs, str):
             self._final_output = outputs
 
@@ -736,6 +761,18 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         response_words = set(response.split())
         if not query_words:
             return 0.5
+
+        # Short conversational exchanges (greetings, acknowledgments)
+        # should not be penalized for low word overlap.
+        # If query is very short and response is a reasonable length,
+        # treat as aligned unless topic mismatch is detected.
+        GREETING_WORDS = {
+            "hi", "hello", "hey", "greetings", "howdy",
+            "thanks", "thank", "bye", "goodbye", "ok", "okay",
+            "yes", "no", "sure", "please", "help",
+        }
+        if len(query_words) <= 3 and query_words & GREETING_WORDS:
+            return 0.8
 
         # Base: word overlap
         overlap = len(query_words & response_words) / len(query_words)
