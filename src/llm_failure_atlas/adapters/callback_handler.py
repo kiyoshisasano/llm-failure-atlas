@@ -552,6 +552,10 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 "approximately", "estimated",
                 "rough estimate", "general estimate",
                 "as of the latest available",
+                # Service/tool failure acknowledgment
+                "service unavailable", "temporarily unavailable",
+                "service issue", "try again",
+                "currently unavailable", "service is currently",
             ]
             uncertainty_acknowledged = any(m in response for m in uncertainty_markers)
 
