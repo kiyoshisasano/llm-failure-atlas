@@ -73,19 +73,20 @@ Adapters normalize raw logs from different frameworks into the format Atlas expe
 
 See `src/llm_failure_atlas/adapters/` for full examples of each method.
 
-**Status:** Atlas is an experimental debugging tool, not a production monitoring system. It is designed for diagnostic support, not automated enforcement.
+**Status:** Atlas is an experimental detection layer, not a production monitoring system. It is designed for diagnostic support, not automated enforcement.
 
 **When to use Atlas:**
 
+- Every agent run — get execution quality status (healthy/degraded/failed) alongside detection results
 - Development and debugging — understanding why an agent failed
 - Regression testing — detecting recurring failure patterns
-- Offline log analysis — diagnosing past runs
+- CI/CD pipelines — automated health checks on agent behavior
 
 Atlas is not designed for real-time production blocking or high-stakes automated decisions without human review.
 
 **Integration requirements:** Atlas requires access to tool call logs (name, count, result), agent responses, and basic interaction metadata. If your framework does not expose these, a custom adapter is needed. Without tool-level telemetry, some patterns will not fire (see Known Limitations).
 
-**Typical workflow:** Run your agent with Atlas enabled → observe detected failures and root cause → apply fixes manually or via the debugger → re-run and compare. Atlas supports iterative debugging, not one-shot evaluation.
+**Typical workflow:** Run your agent with Atlas enabled → check execution quality status → investigate root cause if degraded or failed → apply fixes manually or via the debugger → re-run and compare.
 
 ---
 
