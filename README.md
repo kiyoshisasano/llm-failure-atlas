@@ -13,10 +13,9 @@ pip install llm-failure-atlas
 
 | When | Use | What you get |
 |---|---|---|
-| Agent is running | Atlas `watch()` | Live detection (via `auto_diagnose=True`) |
-| You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal |
-| Atlas only (no debugger) | `auto_diagnose=True` | Detected failures (pattern matching + signals) + telemetry |
-| Full pipeline | `auto_pipeline=True` or `diagnose()` | Detection + diagnosis + explanation + fix proposal (with optional auto-apply) |
+| Agent is running (detection only) | `watch(graph, auto_diagnose=True)` | Detected failures (pattern matching + signals) |
+| Agent is running (full pipeline) | `watch(graph, auto_pipeline=True)` | Detection + diagnosis + fix proposal during execution |
+| You have a log file | Debugger `diagnose()` | Root cause + explanation + fix proposal from saved logs |
 
 ```python
 # Detection only (Atlas)
@@ -70,23 +69,24 @@ Adapters normalize raw logs from different frameworks into the format Atlas expe
 | Callback handler | Any LangChain/LangGraph agent | `config={"callbacks": [AtlasCallbackHandler(auto_diagnose=True)]}` |
 | CrewAI listener | CrewAI crews | `AtlasCrewListener(auto_diagnose=True)` — auto-registers on event bus |
 | Batch adapter | Post-hoc analysis from JSON exports | `LangChainAdapter().build_matcher_input(raw_trace)` |
-| Redis help demo | [Redis workshop](https://github.com/redis-developer/movie-recommender-rag-semantic-cache-workshop) /api/help/chat | `RedisHelpDemoAdapter().build_matcher_input(response)` |
+| Redis help demo | [Redis workshop](https://github.com/bhavana-giri/movie-recommender-rag-semantic-cache-workshop) /api/help/chat | `RedisHelpDemoAdapter().build_matcher_input(response)` |
 
 See `src/llm_failure_atlas/adapters/` for full examples of each method.
 
-**Status:** Atlas is an experimental debugging tool, not a production monitoring system. It is designed for diagnostic support, not automated enforcement.
+**Status:** Atlas is an experimental detection layer, not a production monitoring system. It is designed for diagnostic support, not automated enforcement.
 
 **When to use Atlas:**
 
+- Every agent run — get execution quality status (healthy/degraded/failed) alongside detection results
 - Development and debugging — understanding why an agent failed
 - Regression testing — detecting recurring failure patterns
-- Offline log analysis — diagnosing past runs
+- CI/CD pipelines — automated health checks on agent behavior
 
 Atlas is not designed for real-time production blocking or high-stakes automated decisions without human review.
 
 **Integration requirements:** Atlas requires access to tool call logs (name, count, result), agent responses, and basic interaction metadata. If your framework does not expose these, a custom adapter is needed. Without tool-level telemetry, some patterns will not fire (see Known Limitations).
 
-**Typical workflow:** Run your agent with Atlas enabled → observe detected failures and root cause → apply fixes manually or via the debugger → re-run and compare. Atlas supports iterative debugging, not one-shot evaluation.
+**Typical workflow:** Run your agent with Atlas enabled → check execution quality status → investigate root cause if degraded or failed → apply fixes manually or via the debugger → re-run and compare.
 
 ---
 
@@ -106,7 +106,7 @@ Explanation:
   Action: Review the proposed fix before applying.
 ```
 
-When no failure is detected but grounding signals indicate a risk:
+When no failure is detected but signals indicate a potential risk:
 
 ```
 Failures:   none detected
@@ -230,6 +230,7 @@ The callback handler infers telemetry fields not directly observable from agent 
 | `grounding.uncertainty_acknowledged` | Response contains staleness/uncertainty language |
 | `grounding.source_data_length` | Total character count of usable tool outputs |
 | `grounding.expansion_ratio` | response_length / source_data_length |
+| `grounding.tool_result_diversity` | Unique tool outputs / total tool calls (low value = redundant calls) |
 | `retrieval.adversarial_score` | Keyword scan of retrieved documents for injection patterns |
 | `context.truncated` | Input tokens exceed 85% of model context window |
 
@@ -334,9 +335,58 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://gi
 
 ---
 
+## Full Pipeline Example (Atlas + Debugger)
+
+```python
+from agent_failure_debugger import diagnose
+
+raw_log = {
+    "inputs": {"query": "Change my flight to tomorrow morning"},
+    "outputs": {"response": "I've found several hotels near the airport for you."},
+    "steps": [
+        {"type": "llm", "outputs": {"text": "Let me check available flights."}},
+        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
+         "outputs": {"flights": []}, "error": None},
+        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
+         "outputs": {"flights": []}, "error": None},
+        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
+         "outputs": {"flights": []}, "error": None},
+        {"type": "llm", "outputs": {"text": "I've found several hotels near the airport."}}
+    ],
+    "feedback": {"user_correction": "I asked about flights, not hotels."}
+}
+
+result = diagnose(raw_log, adapter="langchain")
+print(result["summary"]["root_cause"])
+```
+
+Requires `pip install agent-failure-debugger`. See [Quick Start Guide](docs/quickstart.md) for more usage patterns.
+
+## Common Mistakes
+
+| Problem | Cause | Fix |
+|---|---|---|
+| "0 failures detected" | Adapter got insufficient data | Provide complete trace with tool calls |
+| Wrong results | Input format doesn't match adapter | See [Adapter Formats](docs/adapter_formats.md) |
+| Pattern doesn't fire | Adapter doesn't produce required fields | Check [Adapter Coverage](docs/limitations_faq.md#adapter-coverage) |
+
+**⚠ No error is raised for wrong inputs.** The system silently returns zero failures if the adapter cannot extract signals.
+
+## This Tool Cannot
+
+- Verify factual correctness of agent responses
+- Detect semantic mismatch (requires embeddings)
+- Analyze multi-agent system coordination
+
+These reflect the current scope of deterministic, heuristic-based detection — not permanent design limits. The architecture (adapter → signal → matcher → graph) is designed to accommodate new signal sources, including embedding-based or ML-assisted layers, without changing the core pipeline.
+
+See [Limitations & FAQ](docs/limitations_faq.md) for details.
+
+---
+
 ## Known Limitations
 
-Some failure-like behaviors are observable but not yet diagnosable as failure patterns:
+Some failure-like behaviors are observable but not yet diagnosable as failure patterns. Each has specific conditions for promotion — they are not permanently excluded but require additional data, signals, or calibration:
 
 - **Thin grounding** — the agent produces detailed specifics without source data, sometimes while acknowledging the lack of data. Observed across gpt-4o-mini and Claude Haiku in 3 domains (weather, stock, restaurant). A draft pattern has been validated (5 cases detected, 0 false positives) but is not yet part of the detection set. Threshold calibration for mid-range responses is still needed before promotion.
 - **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Tested with 30 seed/probe pairs; similarity ranges for valid and invalid reuse overlap, confirming that similarity alone is insufficient. Requires a secondary signal.
@@ -368,7 +418,7 @@ This project differs from other approaches to LLM agent reliability:
 | Guardrails / validators | Block or filter inputs/outputs | Prevention, not diagnosis |
 | **This project** | **Deterministic signal extraction + causal graph** | **Explainable but heuristic-bound** |
 
-Atlas occupies a specific position: a deterministic diagnosis layer that produces the same result for the same input, explains why it reached that conclusion, and does not require ML or formal specifications. This makes it auditable and reproducible, at the cost of being limited to what keyword/threshold heuristics can observe.
+Atlas occupies a specific position: a deterministic diagnosis layer that produces the same result for the same input, explains why it reached that conclusion, and does not require ML or formal specifications. This makes it auditable and reproducible, at the cost of being limited to what keyword/threshold heuristics can observe. This deterministic core is intended as a stable foundation — additional signal layers (embedding-based, ML-assisted) can be introduced as optional advisory inputs without breaking reproducibility.
 
 ## Telemetry Model
 
@@ -388,9 +438,9 @@ Atlas does not operate on full event sequences. Telemetry is a summarized state 
 
 - Temporal patterns are approximated via aggregated signals (e.g., per-tool repeat counts with success/failure tracking)
 - Exact step-by-step reasoning or ordering is not reconstructed
-- Some trajectory-level failures (e.g., premature stopping after partial progress) are intentionally out of scope
+- Some trajectory-level failures (e.g., premature stopping after partial progress) are not addressed by the current telemetry model
 
-This is a design tradeoff for determinism and simplicity.
+This is a design tradeoff for determinism and simplicity in the current implementation.
 
 ## Scope of Failures
 
@@ -402,27 +452,36 @@ Atlas focuses on single-agent runtime failures:
 - Output failures (misalignment, incorrect result)
 - Termination failures (silent exit, error-driven exit). These describe how execution ended, not necessarily the root cause
 
-It does not cover:
+The same patterns also apply to non-LLM systems with similar step/retry/termination structures. See [examples/workflow_pipeline](examples/workflow_pipeline/) (order processing pipeline) and [examples/api_orchestration](examples/api_orchestration/) (multi-API service) for demonstrations with no LLM involved.
+
+It does not currently cover:
 
 - Multi-agent coordination failures (see [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST))
 - Semantic correctness beyond keyword heuristics (requires embedding/ML)
 - Infrastructure failures outside the agent runtime (network, deployment)
 
+The pattern set and causal graph are versioned and extensible. New patterns can be added by defining a YAML file and connecting it to the graph; new signal sources can be introduced via adapters without modifying the matcher or existing patterns.
+
 ## Evaluation Status
 
-Atlas uses three evaluation methods:
+Atlas uses multiple evaluation methods across different layers:
 
-**Regression and false positive testing:** 17/17 regression PASS, 7/7 false positive PASS (healthy telemetry produces 0 domain failures), 9/9 cross-model PASS.
+**Evaluation dataset (evaluation/):** 10 cases with ground truth (expected root cause, expected causal path, expected conflicts). `metrics.py` computes detection precision/recall/F1, root accuracy, root MRR, path exact/partial match, conflict accuracy, and explanation faithfulness/signal coverage/causal order. Run `python evaluation/run_eval.py` to reproduce.
+
+**Validation set (validation/):** 30 scenarios across 9 categories (adversarial, ambiguous, clean, false positive, missing fields, multi-cause, partial signal, regression, tool failure) with 30 human annotations (root_score, path_score, explanation_score on a 0–2 scale). `run_real_eval.py` runs matcher → debugger → explainer, performs automatic weak signal checks and error classification (false_positive, false_negative, wrong_root, over_detection, threshold_boundary), and cross-references against human judgment.
+
+**Regression and false positive testing:** 10/10 regression PASS, 7/7 false positive PASS (healthy telemetry produces 0 domain failures), 9/9 cross-model PASS.
 
 **Mutation testing:** Healthy telemetry is mutated to inject each failure pattern. 13/14 domain patterns are testable (tool_result_misinterpretation requires adapter fields no adapter currently produces). Mutation score: 13/13 KILLED (100% of testable patterns detected when injected). Run `python evaluation/mutation_eval.py` to reproduce.
 
 **Sensitivity analysis:** Numeric thresholds are swept to identify transition points where detection flips. All patterns show clean transitions at documented thresholds with no unstable regions. Run `python evaluation/sensitivity_eval.py` to reproduce.
 
+**Cross-model validation:** Tested with real APIs (gpt-4o-mini, Claude Haiku 4.5, Gemini 2.5 Flash) under controlled LangGraph scenarios. Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses. See [Cross-Model Validation](docs/cross_model_validation.md).
+
 **What is not yet evaluated:**
 
-- No ground-truth failure labels from real-world traces (precision/recall against external datasets)
-- No evaluation against annotated benchmarks (MAST-Data traces are multi-agent, not compatible)
-- Detection quality is measured by reproducibility and mutation coverage, not by labeled corpora
+- Quantitative detection accuracy (precision/recall) against external agent benchmarks. Candidate datasets exist — BFCL (tool-calling correctness), ToolBench (API usage trajectories), WebArena (web task traces), SWE-bench (code editing traces), GAIA (multi-step QA) — but adapting their traces and success/failure labels to Atlas's failure pattern taxonomy has not yet been done. Taxonomy-level comparison has been completed against MAST (multi-agent, NeurIPS 2025) and Rosen's Cogency Framework (specification quality)
+- Real-world production validation depends on developer feedback (traces welcome)
 
 Atlas patterns have been mapped to [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST) for taxonomy comparison (see [MAST mapping analysis](docs/deep_analysis/mast_mapping_analysis.md)).
 
@@ -453,7 +512,7 @@ llm-failure-atlas/
       update_policy.py                  # suggestion-only learning
   evaluation/                            # mutation + sensitivity tests
   validation/                            # 30 scenarios + annotations
-  examples/                              # 10 reproducible test cases
+  examples/                              # 12 test cases (10 agent + 2 non-LLM)
   docs/                                  # analysis + playbook
 ```
 
@@ -464,6 +523,7 @@ llm-failure-atlas/
 | Repository | Role |
 |---|---|
 | [agent-failure-debugger](https://github.com/kiyoshisasano/agent-failure-debugger) | Causal diagnosis, fix generation, auto-apply, explanation |
+| [pytest-agent-health](https://github.com/kiyoshisasano/pytest-agent-health) | CI integration — catch silent agent failures in pytest |
 | [agent-pld-metrics](https://github.com/kiyoshisasano/agent-pld-metrics) | Behavioral stability framework (PLD) |
 
 ## Cogency Framework Mapping
