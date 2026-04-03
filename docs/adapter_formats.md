@@ -27,7 +27,7 @@ All adapters produce this same output structure. Fields marked `# optional` are 
                     "chain_error_occurred": bool},
     "grounding":   {"tool_provided_data": bool, "uncertainty_acknowledged": bool,
                     "response_length": int, "source_data_length": int,
-                    "expansion_ratio": float},
+                    "expansion_ratio": float, "tool_result_diversity": float},
     # optional sections (adapter-dependent):
     # "context":     {"truncated": bool, "critical_info_present": bool,
     #                 "external_instruction_weight": float},
@@ -349,6 +349,7 @@ The telemetry sections, with their fields and how to compute them:
 | `response_length` | int | Character count of final response |
 | `source_data_length` | int | Total character count of usable tool outputs |
 | `expansion_ratio` | float | `response_length / source_data_length` (0.0 if no source data and no response, inf if response but no source data) |
+| `tool_result_diversity` | float or null | Unique tool outputs / total tool calls. Null when no usable tool outputs. 1.0 for single call. Low values (< 0.5 with 2+ calls) indicate redundant tool calls — the agent may have supplemented with unsupported content |
 
 ### Step 3: Know which patterns fire from which fields
 
