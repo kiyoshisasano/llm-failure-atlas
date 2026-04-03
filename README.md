@@ -230,6 +230,7 @@ The callback handler infers telemetry fields not directly observable from agent 
 | `grounding.uncertainty_acknowledged` | Response contains staleness/uncertainty language |
 | `grounding.source_data_length` | Total character count of usable tool outputs |
 | `grounding.expansion_ratio` | response_length / source_data_length |
+| `grounding.tool_result_diversity` | Unique tool outputs / total tool calls (low value = redundant calls) |
 | `retrieval.adversarial_score` | Keyword scan of retrieved documents for injection patterns |
 | `context.truncated` | Input tokens exceed 85% of model context window |
 
