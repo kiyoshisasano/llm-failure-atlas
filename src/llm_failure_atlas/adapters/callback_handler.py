@@ -496,6 +496,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         # Did any tool provide usable data?
         tool_provided_data = False
         source_data_length = 0
+        usable_outputs = []
         for c in self._tool_calls:
             if c.get("error"):
                 continue
@@ -503,6 +504,20 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             if not any(m in output_str.lower() for m in self.TOOL_SOFT_ERROR_MARKERS):
                 tool_provided_data = True
                 source_data_length += len(output_str)
+                usable_outputs.append(output_str.strip().lower())
+
+        # Tool result diversity: fraction of unique results across calls.
+        # Low diversity (e.g., 3 calls returning identical data) indicates
+        # the tool provided no additional information despite being called
+        # multiple times. The response may include content not supported
+        # by tool data.
+        if len(usable_outputs) >= 2:
+            unique_count = len(set(usable_outputs))
+            tool_result_diversity = round(unique_count / len(usable_outputs), 2)
+        elif len(usable_outputs) == 1:
+            tool_result_diversity = 1.0
+        else:
+            tool_result_diversity = None
 
         # Did the final response acknowledge uncertainty?
         uncertainty_acknowledged = False
@@ -554,6 +569,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "response_length": response_length,
             "source_data_length": source_data_length,
             "expansion_ratio": expansion_ratio,
+            "tool_result_diversity": tool_result_diversity,
         }
 
     # Known model context window sizes (tokens).

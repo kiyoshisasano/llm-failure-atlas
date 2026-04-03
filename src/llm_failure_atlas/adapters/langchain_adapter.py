@@ -53,9 +53,29 @@ class LangChainAdapter(BaseAdapter):
         retriever_steps = [s for s in steps if s.get("type") == "retriever"]
         tool_steps = [s for s in steps if s.get("type") == "tool"]
 
+        # Ensure response is always a string.
+        # Some models (e.g., Gemini via LangChain) may produce a list
+        # of content blocks or message objects instead of a plain string.
+        response = raw_log.get("outputs", {}).get("response", "")
+        if isinstance(response, list):
+            # Extract text from list of strings, dicts, or message objects
+            parts = []
+            for item in response:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    parts.append(item.get("text", item.get("content", str(item))))
+                elif hasattr(item, "content"):
+                    parts.append(str(item.content))
+                else:
+                    parts.append(str(item))
+            response = " ".join(parts)
+        elif not isinstance(response, str):
+            response = str(response)
+
         return {
             "query": raw_log.get("inputs", {}).get("query", ""),
-            "response": raw_log.get("outputs", {}).get("response", ""),
+            "response": response,
             "llm_steps": llm_steps,
             "retriever_steps": retriever_steps,
             "tool_steps": tool_steps,
@@ -440,6 +460,7 @@ class LangChainAdapter(BaseAdapter):
         # Did any tool provide usable data?
         tool_provided_data = False
         source_data_length = 0
+        usable_outputs = []
         for s in tool_steps:
             if s.get("error"):
                 continue
@@ -448,6 +469,16 @@ class LangChainAdapter(BaseAdapter):
                        for m in self.TOOL_SOFT_ERROR_MARKERS):
                 tool_provided_data = True
                 source_data_length += len(output_str)
+                usable_outputs.append(output_str.strip().lower())
+
+        # Tool result diversity: fraction of unique results across calls.
+        if len(usable_outputs) >= 2:
+            unique_count = len(set(usable_outputs))
+            tool_result_diversity = round(unique_count / len(usable_outputs), 2)
+        elif len(usable_outputs) == 1:
+            tool_result_diversity = 1.0
+        else:
+            tool_result_diversity = None
 
         # Did the response acknowledge uncertainty?
         uncertainty_markers = [
@@ -487,6 +518,7 @@ class LangChainAdapter(BaseAdapter):
             "response_length": response_length,
             "source_data_length": source_data_length,
             "expansion_ratio": expansion_ratio,
+            "tool_result_diversity": tool_result_diversity,
         }
 
 
