@@ -528,7 +528,33 @@ llm-failure-atlas/
 
 ## Cogency Framework Mapping
 
-Failure patterns are tagged with `cogency_tags` referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/articles/agent-failure-diagnostics.html). Rosen diagnoses input specification quality; Atlas diagnoses runtime symptoms. The mapping is an interpretive projection. See `src/llm_failure_atlas/resources/failures/*.yaml` for tags.
+Each failure pattern is tagged with a `cogency_tags` field referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/articles/agent-failure-diagnostics.html). His framework identifies 5 input quality properties (specification layer) + 2 runtime failure categories.
+
+**Important framing:** Rosen's framework diagnoses *input specification quality* — whether the instructions, context, and tools given to the LLM are cogent. Atlas diagnoses *runtime failure symptoms* — what went wrong during execution. These are different layers. The mapping below is a **projection** from Atlas's runtime failures onto Rosen's specification categories, not a 1:1 correspondence.
+
+```
+Cogency (specification layer) → induces → Atlas failures (runtime layer)
+```
+
+**Projections (Atlas runtime failures that often result from these specification issues):**
+
+| Cogency Property | Atlas Patterns | Relationship |
+|---|---|---|
+| **Coherence** (internal) | `clarification_failure`, `assumption_invalidation_failure`, `instruction_priority_inversion`, `prompt_injection_via_retrieval`, `conflicting_signals` | Ambiguous or contradictory specs manifest as these runtime failures |
+| **Correctness** | `premature_model_commitment`, `repair_strategy_failure` | Wrong interpretation at runtime, often induced by incorrect specification |
+| **Completeness** | `context_truncation_loss` | Runtime information loss — related but not identical to design-time completeness |
+| **Density** | `semantic_cache_intent_bleeding`, `rag_retrieval_drift` | Signal-to-noise issues at runtime, analogous to density problems in specification |
+| **Tool failure** | `agent_tool_call_loop`, `tool_result_misinterpretation` | Direct runtime correspondence |
+
+**Not covered by Atlas (specification-layer gaps):**
+
+| Cogency Property | Why Atlas cannot detect it | Nature of the gap |
+|---|---|---|
+| **Coherence** (external/plausibility) | Requires world knowledge to detect implausible data | Specification-layer issue; Atlas operates on runtime symptoms only |
+| **Sufficiency** | Invisible during execution — output looks correct but misses a critical factor | Fundamental limitation of post-hoc analysis without domain context |
+| **Density** (direct) | Requires measuring signal-to-noise ratio in the context window | Specification-layer measurement; Atlas sees downstream effects, not the cause |
+
+These gaps are structural: they represent the boundary between runtime symptom detection (what Atlas does) and input specification analysis (what Rosen's framework addresses). Closing them would require domain-specific signal definitions or integration with specification-layer tools.
 
 ## Relationship to PLD
 
