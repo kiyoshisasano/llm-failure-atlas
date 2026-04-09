@@ -456,13 +456,13 @@ llm-failure-atlas/
 
 Each failure pattern is tagged with a `cogency_tags` field referencing Cliff Rosen's [Diagnostic Framework for Agent Failure](https://www.orchestratorstudios.com/articles/agent-failure-diagnostics.html). His framework identifies 5 input quality properties (specification layer) + 2 runtime failure categories.
 
-**Important framing:** Rosen's framework diagnoses *input specification quality* — whether the instructions, context, and tools given to the LLM are cogent. Atlas diagnoses *runtime failure symptoms* — what went wrong during execution. These are different layers. The mapping below is a **projection** from Atlas's runtime failures onto Rosen's specification categories, not a 1:1 correspondence.
+**Important framing:** Rosen's framework diagnoses *input specification quality* — whether the instructions, context, and tools given to the LLM are cogent. Atlas diagnoses *runtime failure symptoms* — what went wrong during execution. These are different layers. The mapping below is a **projection** from Atlas's runtime failures onto Rosen's categories, not a 1:1 correspondence.
 
 ```
-Cogency (specification layer) → induces → Atlas failures (runtime layer)
+Rosen's categories (specification + runtime) → manifest as → Atlas failures (runtime detection)
 ```
 
-**Projections (Atlas runtime failures that often result from these specification issues):**
+**Specification-layer projections (Atlas runtime failures that often result from these specification issues):**
 
 | Cogency Property | Atlas Patterns | Relationship |
 |---|---|---|
@@ -470,7 +470,13 @@ Cogency (specification layer) → induces → Atlas failures (runtime layer)
 | **Correctness** | `premature_model_commitment`, `repair_strategy_failure` | Wrong interpretation at runtime, often induced by incorrect specification |
 | **Completeness** | `context_truncation_loss` | Runtime information loss — related but not identical to design-time completeness |
 | **Density** | `semantic_cache_intent_bleeding`, `rag_retrieval_drift` | Signal-to-noise issues at runtime, analogous to density problems in specification |
-| **Tool failure** | `agent_tool_call_loop`, `tool_result_misinterpretation` | Direct runtime correspondence |
+
+**Runtime-layer correspondence (Rosen's runtime failures mapped to Atlas patterns):**
+
+| Rosen Category | Atlas Patterns | Relationship |
+|---|---|---|
+| **Tool failure** | `agent_tool_call_loop`, `tool_result_misinterpretation`, `premature_termination`, `failed_termination` | Tool errors, loops, and resulting termination failures. Rosen distinguishes hard failures (timeouts), soft failures (wrong data), and schema failures — Atlas detects the downstream behavioral consequences |
+| **Genuine LLM failure** | `incorrect_output` | Output misaligned with user intent despite adequate inputs. Rosen notes this is the residual after specification issues are ruled out — Atlas detects the symptom but cannot distinguish specification-induced errors from genuine LLM failures |
 
 **Not covered by Atlas (specification-layer gaps):**
 
