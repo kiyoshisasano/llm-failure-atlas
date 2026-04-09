@@ -390,24 +390,20 @@ The pattern set and causal graph are versioned and extensible. New patterns can 
 
 ## Evaluation Status
 
-Atlas uses multiple evaluation methods across different layers:
+| Test | Result | Reproduce |
+|---|---|---|
+| Evaluation dataset (10 cases, ground truth) | Precision/recall/F1, root accuracy, path match | `python evaluation/run_eval.py` |
+| Validation set (30 scenarios, 9 categories, 30 human annotations) | Automatic error classification + human cross-reference | `python validation/run_real_eval.py` |
+| Regression | 10/10 PASS | |
+| False positive (healthy telemetry) | 7/7 PASS (0 domain failures) | |
+| Cross-model (GPT-4o-mini, Claude Haiku, Gemini Flash) | 9/9 PASS, identical telemetry across `watch()` and `diagnose()` | [Cross-Model Validation](docs/cross_model_validation.md) |
+| Mutation (13 testable / 14 domain patterns) | 13/13 KILLED (100%) | `python evaluation/mutation_eval.py` |
+| Sensitivity (threshold sweep) | Clean transitions at all thresholds, no unstable regions | `python evaluation/sensitivity_eval.py` |
 
-**Evaluation dataset (evaluation/):** 10 cases with ground truth (expected root cause, expected causal path, expected conflicts). `metrics.py` computes detection precision/recall/F1, root accuracy, root MRR, path exact/partial match, conflict accuracy, and explanation faithfulness/signal coverage/causal order. Run `python evaluation/run_eval.py` to reproduce.
+**Not yet evaluated:**
 
-**Validation set (validation/):** 30 scenarios across 9 categories (adversarial, ambiguous, clean, false positive, missing fields, multi-cause, partial signal, regression, tool failure) with 30 human annotations (root_score, path_score, explanation_score on a 0–2 scale). `run_real_eval.py` runs matcher → debugger → explainer, performs automatic weak signal checks and error classification (false_positive, false_negative, wrong_root, over_detection, threshold_boundary), and cross-references against human judgment.
-
-**Regression and false positive testing:** 10/10 regression PASS, 7/7 false positive PASS (healthy telemetry produces 0 domain failures), 9/9 cross-model PASS.
-
-**Mutation testing:** Healthy telemetry is mutated to inject each failure pattern. 13/14 domain patterns are testable (tool_result_misinterpretation requires adapter fields no adapter currently produces). Mutation score: 13/13 KILLED (100% of testable patterns detected when injected). Run `python evaluation/mutation_eval.py` to reproduce.
-
-**Sensitivity analysis:** Numeric thresholds are swept to identify transition points where detection flips. All patterns show clean transitions at documented thresholds with no unstable regions. Run `python evaluation/sensitivity_eval.py` to reproduce.
-
-**Cross-model validation:** Tested with real APIs (gpt-4o-mini, Claude Haiku 4.5, Gemini 2.5 Flash) under controlled LangGraph scenarios. Both `watch()` and `diagnose()` code paths produce identical telemetry and diagnoses. See [Cross-Model Validation](docs/cross_model_validation.md).
-
-**What is not yet evaluated:**
-
-- Quantitative detection accuracy (precision/recall) against external agent benchmarks. Candidate datasets exist — BFCL (tool-calling correctness), ToolBench (API usage trajectories), WebArena (web task traces), SWE-bench (code editing traces), GAIA (multi-step QA) — but adapting their traces and success/failure labels to Atlas's failure pattern taxonomy has not yet been done. Taxonomy-level comparison has been completed against MAST (multi-agent, NeurIPS 2025) and Rosen's Cogency Framework (specification quality)
-- Real-world production validation depends on developer feedback (traces welcome)
+- Quantitative precision/recall against external benchmarks (BFCL, ToolBench, WebArena, SWE-bench, GAIA). Taxonomy-level comparison completed against MAST (NeurIPS 2025) and Rosen's Cogency Framework
+- Real-world production validation (traces welcome)
 
 Atlas patterns have been mapped to [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST) for taxonomy comparison (see [MAST mapping analysis](docs/deep_analysis/mast_mapping_analysis.md)).
 
