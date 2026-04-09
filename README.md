@@ -290,14 +290,7 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://gi
 
 ## KPIs
 
-| KPI | Prevents | Target |
-|---|---|---|
-| threshold_boundary_rate | Detection instability | < 5% |
-| fix_dominance | Fix overfitting | < 60% |
-| failure_monotonicity | System runaway | > 90% |
-| rollback_rate | Auto-apply safety risk | < 10% |
-| no_regression_rate | Explicit degradation | > 95% |
-| causal_consistency_rate | Policy drift | > 90% |
+6 operational KPIs (threshold_boundary_rate, fix_dominance, failure_monotonicity, rollback_rate, no_regression_rate, causal_consistency_rate) are computed by `compute_kpi.py`. See source for targets and thresholds.
 
 ---
 
@@ -315,40 +308,11 @@ The Atlas provides structure, detection, and adapters. The [debugger](https://gi
 
 ## Full Pipeline Example (Atlas + Debugger)
 
-```python
-from agent_failure_debugger import diagnose
-
-raw_log = {
-    "inputs": {"query": "Change my flight to tomorrow morning"},
-    "outputs": {"response": "I've found several hotels near the airport for you."},
-    "steps": [
-        {"type": "llm", "outputs": {"text": "Let me check available flights."}},
-        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
-         "outputs": {"flights": []}, "error": None},
-        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
-         "outputs": {"flights": []}, "error": None},
-        {"type": "tool", "name": "search_flights", "inputs": {"date": "2025-03-20"},
-         "outputs": {"flights": []}, "error": None},
-        {"type": "llm", "outputs": {"text": "I've found several hotels near the airport."}}
-    ],
-    "feedback": {"user_correction": "I asked about flights, not hotels."}
-}
-
-result = diagnose(raw_log, adapter="langchain")
-print(result["summary"]["root_cause"])
-```
-
-Requires `pip install agent-failure-debugger`. See [Quick Start Guide](docs/quickstart.md) for more usage patterns.
+For a full diagnosis example (detection + root cause + fix proposal), see the [agent-failure-debugger Quick Start](https://github.com/kiyoshisasano/agent-failure-debugger#quick-start).
 
 ## Common Mistakes
 
-| Problem | Cause | Fix |
-|---|---|---|
-| "0 failures detected" | Adapter got insufficient data | Provide complete trace with tool calls |
-| Wrong results | Input format doesn't match adapter | See [Adapter Formats](docs/adapter_formats.md) |
-| Pattern doesn't fire | Adapter doesn't produce required fields | Check [Adapter Coverage](docs/limitations_faq.md#adapter-coverage) |
-
-**⚠ No error is raised for wrong inputs.** The system silently returns zero failures if the adapter cannot extract signals.
+**⚠ No error is raised for wrong inputs.** The system silently returns zero failures if the adapter cannot extract signals. See [Limitations & FAQ](docs/limitations_faq.md) for common causes and solutions.
 
 ## This Tool Cannot
 
@@ -356,31 +320,15 @@ Requires `pip install agent-failure-debugger`. See [Quick Start Guide](docs/quic
 - Detect semantic mismatch (requires embeddings)
 - Analyze multi-agent system coordination
 
-These reflect the current scope of deterministic, heuristic-based detection — not permanent design limits. The architecture (adapter → signal → matcher → graph) is designed to accommodate new signal sources, including embedding-based or ML-assisted layers, without changing the core pipeline.
-
-See [Limitations & FAQ](docs/limitations_faq.md) for details.
-
----
+These reflect the current scope — not permanent design limits. The architecture is designed to accommodate new signal sources without changing the core pipeline.
 
 ## Known Limitations
 
-Some failure-like behaviors are observable but not yet diagnosable as failure patterns. Each has specific conditions for promotion — they are not permanently excluded but require additional data, signals, or calibration:
+Three failure-like behaviors are observable but not yet diagnosable: thin grounding (agent supplements sparse data without disclosure), cache intent mismatch (similarity alone is insufficient), and semantic mismatch (requires embeddings). These are tracked as observation gaps with specific promotion conditions.
 
-- **Thin grounding** — the agent produces detailed specifics without source data, sometimes while acknowledging the lack of data. Observed across gpt-4o-mini and Claude Haiku in 3 domains (weather, stock, restaurant). A draft pattern has been validated (5 cases detected, 0 false positives) but is not yet part of the detection set. Threshold calibration for mid-range responses is still needed before promotion.
-- **Cache intent mismatch** — a semantically similar but different-intent query receives a cached response. Tested with 30 seed/probe pairs; similarity ranges for valid and invalid reuse overlap, confirming that similarity alone is insufficient. Requires a secondary signal.
-- **Semantic mismatch** — a tool returns data for a completely different topic. Not detectable with current heuristics; requires embedding-based comparison (Layer 1 ML).
+Heuristic limitations include soft error keyword matching, hardcoded model context limits, and adapter-dependent pattern coverage.
 
-These are tracked as observation gaps, not planned features. See [Failure Eligibility](docs/deep_analysis/failure_eligibility.md) for the conditions required to promote each to a diagnosable pattern.
-
-**Heuristic limitations:**
-
-- **Soft error detection** — tool output is scanned for keywords ("error", "not found", "empty", etc.) to infer whether the tool returned usable data. Normal output that incidentally contains these words in a different context may be misclassified. If this causes false positives for your domain, review `TOOL_SOFT_ERROR_MARKERS` in the adapter you are using.
-- **Model context limits** — context truncation risk is estimated using hardcoded token limits per model (`MODEL_CONTEXT_LIMITS` in `callback_handler.py`). New models require a manual update to this dictionary. If a model is not listed, truncation detection is skipped rather than guessed.
-- **Adapter-dependent patterns** — some patterns (e.g., `tool_result_misinterpretation`) require telemetry fields (`tool.output_valid`, `state.updated_correctly`) that no adapter currently produces. These patterns exist in the taxonomy but will not fire until an adapter emits the required fields.
-
-**Design boundary — state telemetry:**
-
-The `state` section in telemetry contains local aggregations (per-tool call counts, success/failure counts) and their direct derivations (`any_tool_looping`, `progress_made`). It does not contain cross-pattern logic, causal inference, or multi-step reasoning. These belong in the matcher and debugger pipeline, not in the adapter.
+Full details: [Limitations & FAQ](docs/limitations_faq.md) and [Failure Eligibility](docs/deep_analysis/failure_eligibility.md).
 
 ---
 
