@@ -29,32 +29,10 @@ result = diagnose(raw_log, adapter="langchain")
 
 ---
 
-## End-to-End Example (Atlas + Debugger)
-
-Run a full example including detection (Atlas) and diagnosis (Debugger):
-
-```bash
-pip install llm-failure-atlas
-
-# For full pipeline (detection + diagnosis + fixes):
-pip install agent-failure-debugger
-```
-
----
-
 ## How to Use
 
-Add one line to your LangGraph agent for failure detection:
+Add `watch()` to your LangGraph agent (see code example above). Flags:
 
-```python
-from llm_failure_atlas.adapters.callback_handler import watch
-
-graph = watch(workflow.compile(), auto_diagnose=True)
-result = graph.invoke({"messages": [HumanMessage(content="...")]})
-# → detected failures printed on completion
-```
-
-**Flags:**
 - `auto_diagnose=True` — run Atlas detection only (pattern matching + signals, no causal analysis)
 - `auto_pipeline=True` — also run the [debugger](https://github.com/kiyoshisasano/agent-failure-debugger) pipeline (root cause, explanation, fix proposal) automatically
 
