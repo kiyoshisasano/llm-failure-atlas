@@ -425,22 +425,42 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         context_truncation_loss patterns.
         """
         if not self._retriever_results:
-            return {"skipped": True}
+            return {
+                "skipped": True,
+                "retrieved_doc_count": 0,
+                "retrieved_ids": None,
+                "retrieval_scores": None,
+                "mean_retrieval_score": None,
+            }
 
         # Scan all retrieved documents for adversarial patterns
         contains_instruction = False
         adversarial_matches = 0
         total_docs = 0
+        retrieved_ids = []
+        retrieval_scores = []
 
         for ret in self._retriever_results:
             for doc in ret.get("documents", []):
                 total_docs += 1
                 content = doc.get("content", "").lower()
+                metadata = doc.get("metadata", {})
                 for pattern in self.ADVERSARIAL_PATTERNS:
                     if pattern in content:
                         contains_instruction = True
                         adversarial_matches += 1
                         break  # one match per doc is enough
+
+                # Extract chunk/document IDs
+                for id_key in ("chunk_id", "id", "doc_id", "document_id"):
+                    if id_key in metadata:
+                        retrieved_ids.append(str(metadata[id_key]))
+                        break
+
+                # Extract retrieval scores
+                score = metadata.get("score") or metadata.get("similarity_score")
+                if score is not None:
+                    retrieval_scores.append(float(score))
 
         adversarial_score = (
             adversarial_matches / total_docs if total_docs > 0 else 0.0
@@ -469,6 +489,13 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "override_detected": override_detected,
             "adversarial_score": round(adversarial_score, 2),
             "expected_coverage": round(expected_coverage, 2),
+            "retrieved_doc_count": total_docs,
+            "retrieved_ids": retrieved_ids if retrieved_ids else None,
+            "retrieval_scores": retrieval_scores if retrieval_scores else None,
+            "mean_retrieval_score": (
+                round(sum(retrieval_scores) / len(retrieval_scores), 3)
+                if retrieval_scores else None
+            ),
         }
 
     def _build_response(self) -> dict:
@@ -497,6 +524,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         tool_provided_data = False
         source_data_length = 0
         usable_outputs = []
+        retrieved_ids = []
         for c in self._tool_calls:
             if c.get("error"):
                 continue
@@ -505,6 +533,26 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 tool_provided_data = True
                 source_data_length += len(output_str)
                 usable_outputs.append(output_str.strip().lower())
+
+                # Extract chunk/document IDs from tool output
+                try:
+                    parsed = json.loads(output_str)
+                    if isinstance(parsed, dict):
+                        # Case 1: documents array with IDs
+                        if "documents" in parsed:
+                            for doc in parsed["documents"]:
+                                if isinstance(doc, dict):
+                                    for id_key in ("chunk_id", "id", "doc_id",
+                                                   "document_id"):
+                                        if id_key in doc:
+                                            retrieved_ids.append(str(doc[id_key]))
+                                            break
+                        # Case 2: explicit chunk_ids field
+                        if "chunk_ids" in parsed:
+                            retrieved_ids.extend(
+                                [str(x) for x in parsed["chunk_ids"]])
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    pass
 
         # Tool result diversity: fraction of unique results across calls.
         # Low diversity (e.g., 3 calls returning identical data) indicates
@@ -574,6 +622,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             "source_data_length": source_data_length,
             "expansion_ratio": expansion_ratio,
             "tool_result_diversity": tool_result_diversity,
+            "retrieved_ids": retrieved_ids if retrieved_ids else None,
         }
 
     # Known model context window sizes (tokens).
