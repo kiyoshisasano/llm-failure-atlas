@@ -120,15 +120,38 @@ class LangChainAdapter(BaseAdapter):
 
     def _extract_retrieval(self, normalized: dict) -> dict:
         """Extract retrieval state."""
+        if not normalized["retriever_steps"]:
+            return {
+                "skipped": True,
+                "retrieved_doc_count": 0,
+                "retrieved_ids": None,
+            }
+
+        retrieved_doc_count = 0
+        retrieved_ids = []
+
         for step in normalized["retriever_steps"]:
             meta = step.get("metadata", {})
+            docs = step.get("outputs", {}).get("documents", [])
+            retrieved_doc_count += len(docs)
+            for doc in docs:
+                if isinstance(doc, dict):
+                    for id_key in ("chunk_id", "id", "doc_id", "document_id"):
+                        if id_key in doc:
+                            retrieved_ids.append(str(doc[id_key]))
+                            break
+
             return {
                 "skipped": bool(meta.get("retrieval_skipped", False)),
+                "retrieved_doc_count": retrieved_doc_count,
+                "retrieved_ids": retrieved_ids if retrieved_ids else None,
             }
-        # No retriever step = retrieval was skipped
-        if not normalized["retriever_steps"]:
-            return {"skipped": True}
-        return {"skipped": False}
+
+        return {
+            "skipped": False,
+            "retrieved_doc_count": 0,
+            "retrieved_ids": None,
+        }
 
     # Markers for tool outputs that indicate a soft failure (no usable data).
     TOOL_SOFT_ERROR_MARKERS = [
@@ -461,6 +484,7 @@ class LangChainAdapter(BaseAdapter):
         tool_provided_data = False
         source_data_length = 0
         usable_outputs = []
+        retrieved_ids = []
         for s in tool_steps:
             if s.get("error"):
                 continue
@@ -470,6 +494,22 @@ class LangChainAdapter(BaseAdapter):
                 tool_provided_data = True
                 source_data_length += len(output_str)
                 usable_outputs.append(output_str.strip().lower())
+
+                # Extract chunk/document IDs if present in tool output
+                outputs = s.get("outputs", {})
+                # Case 1: retriever step with documents
+                if isinstance(outputs, dict) and "documents" in outputs:
+                    for doc in outputs["documents"]:
+                        if isinstance(doc, dict):
+                            for id_key in ("chunk_id", "id", "doc_id",
+                                           "document_id"):
+                                if id_key in doc:
+                                    retrieved_ids.append(str(doc[id_key]))
+                                    break
+                # Case 2: tool output with explicit chunk_ids field
+                if isinstance(outputs, dict) and "chunk_ids" in outputs:
+                    retrieved_ids.extend(
+                        [str(x) for x in outputs["chunk_ids"]])
 
         # Tool result diversity: fraction of unique results across calls.
         if len(usable_outputs) >= 2:
@@ -523,6 +563,7 @@ class LangChainAdapter(BaseAdapter):
             "source_data_length": source_data_length,
             "expansion_ratio": expansion_ratio,
             "tool_result_diversity": tool_result_diversity,
+            "retrieved_ids": retrieved_ids if retrieved_ids else None,
         }
 
 
