@@ -612,8 +612,13 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         # Expansion ratio: how much the response expands beyond source data
         if source_data_length > 0:
             expansion_ratio = round(response_length / source_data_length, 2)
+        elif response_length == 0:
+            expansion_ratio = 0.0
         else:
-            expansion_ratio = 0.0 if response_length == 0 else float("inf")
+            # Response produced but no usable source data:
+            # ratio is undefined. Use None for JSON compatibility
+            # (json.dumps(float('inf')) is not valid strict JSON).
+            expansion_ratio = None
 
         return {
             "tool_provided_data": tool_provided_data,

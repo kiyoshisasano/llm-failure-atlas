@@ -5,7 +5,7 @@ version: "0.1.0"
 #   [ ] edge.from and edge.to must reference existing node ids
 #   [ ] edge.conditions must NOT use signal names (use semantic names)
 #   [ ] edge.relation must be one of: predisposes | induces | propagates_to
-#   [ ] node.layer must be one of: reasoning | system | retrieval | output
+#   [ ] node.layer must be one of: reasoning | system | retrieval | output | meta
 #   [ ] status: planned nodes are excluded by graph_loader at runtime
 #
 # This graph is NOT used for diagnosis.
