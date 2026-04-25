@@ -1,0 +1,66 @@
+[
+  {
+    "failure_id": "agent_tool_call_loop",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "repeated_tool_call_without_progress": true,
+      "no_replanning_before_repeat": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "repeated_tool_call_without_progress",
+        "add": 0.4
+      },
+      {
+        "type": "evidence",
+        "signal": "no_replanning_before_repeat",
+        "add": 0.3
+      }
+    ],
+    "observation_quality": {
+      "repeated_tool_call_without_progress": {
+        "observed": true,
+        "missing": false
+      },
+      "no_replanning_before_repeat": {
+        "observed": true,
+        "missing": false
+      }
+    }
+  },
+  {
+    "failure_id": "failed_termination",
+    "diagnosed": true,
+    "confidence": 0.7,
+    "threshold": 0.6,
+    "signals": {
+      "execution_error_caused_termination": true,
+      "error_without_output": true
+    },
+    "applied_modifiers": [
+      {
+        "type": "evidence",
+        "signal": "execution_error_caused_termination",
+        "add": 0.35
+      },
+      {
+        "type": "evidence",
+        "signal": "error_without_output",
+        "add": 0.35
+      }
+    ],
+    "observation_quality": {
+      "execution_error_caused_termination": {
+        "observed": true,
+        "missing": false
+      },
+      "error_without_output": {
+        "observed": true,
+        "missing": false
+      }
+    }
+  }
+]

@@ -1,0 +1,47 @@
+{
+    "input": {
+        "ambiguity_score": 0.2
+    },
+    "interaction": {
+        "clarification_triggered": false,
+        "user_correction_detected": false
+    },
+    "reasoning": {
+        "replanned": false
+    },
+    "cache": {
+        "hit": false,
+        "similarity": 0.0,
+        "query_intent_similarity": 1.0
+    },
+    "retrieval": {
+        "skipped": false
+    },
+    "response": {
+        "alignment_score": 0.0
+    },
+    "tools": {
+        "call_count": 5,
+        "repeat_count": 3,
+        "soft_error_count": 3,
+        "error_count": 1
+    },
+    "state": {
+        "progress_made": true,
+        "any_tool_looping": true,
+        "tool_progress": {
+            "search_hotels": {"calls": 1, "successes": 1, "failures": 0, "progress": true},
+            "search_flights": {"calls": 3, "successes": 0, "failures": 3, "progress": false},
+            "search_car_rental": {"calls": 1, "successes": 1, "failures": 0, "progress": true}
+        },
+        "output_produced": false,
+        "chain_error_occurred": true
+    },
+    "grounding": {
+        "tool_provided_data": true,
+        "uncertainty_acknowledged": false,
+        "response_length": 0,
+        "source_data_length": 400,
+        "expansion_ratio": 0.0
+    }
+}
