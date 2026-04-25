@@ -125,10 +125,13 @@ class LangChainAdapter(BaseAdapter):
                 "skipped": True,
                 "retrieved_doc_count": 0,
                 "retrieved_ids": None,
+                "retrieval_scores": None,
+                "mean_retrieval_score": None,
             }
 
         retrieved_doc_count = 0
         retrieved_ids = []
+        retrieval_scores = []
 
         for step in normalized["retriever_steps"]:
             meta = step.get("metadata", {})
@@ -140,17 +143,27 @@ class LangChainAdapter(BaseAdapter):
                         if id_key in doc:
                             retrieved_ids.append(str(doc[id_key]))
                             break
+                    score = doc.get("score") or doc.get("similarity_score")
+                    if score is not None:
+                        retrieval_scores.append(float(score))
 
             return {
                 "skipped": bool(meta.get("retrieval_skipped", False)),
                 "retrieved_doc_count": retrieved_doc_count,
                 "retrieved_ids": retrieved_ids if retrieved_ids else None,
+                "retrieval_scores": retrieval_scores if retrieval_scores else None,
+                "mean_retrieval_score": (
+                    round(sum(retrieval_scores) / len(retrieval_scores), 3)
+                    if retrieval_scores else None
+                ),
             }
 
         return {
             "skipped": False,
             "retrieved_doc_count": 0,
             "retrieved_ids": None,
+            "retrieval_scores": None,
+            "mean_retrieval_score": None,
         }
 
     # Markers for tool outputs that indicate a soft failure (no usable data).

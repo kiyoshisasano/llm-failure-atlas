@@ -14,8 +14,11 @@ All adapters produce this same output structure. Fields marked `# optional` are 
                     # optional: "contradiction_detected": bool, "hypothesis_abandoned": bool
                    },
     "cache":       {"hit": bool, "similarity": float, "query_intent_similarity": float},
-    "retrieval":   {"skipped": bool,
-                    # optional: "contains_instruction": bool, "override_detected": bool,
+    "retrieval":   {"skipped": bool, "retrieved_doc_count": int,
+                    "retrieved_ids": list | None,
+                    # optional: "retrieval_scores": list | None,
+                    #           "mean_retrieval_score": float | None,
+                    #           "contains_instruction": bool, "override_detected": bool,
                     #           "adversarial_score": float, "expected_coverage": float
                    },
     "response":    {"alignment_score": float},
@@ -27,7 +30,8 @@ All adapters produce this same output structure. Fields marked `# optional` are 
                     "chain_error_occurred": bool},
     "grounding":   {"tool_provided_data": bool, "uncertainty_acknowledged": bool,
                     "response_length": int, "source_data_length": int,
-                    "expansion_ratio": float, "tool_result_diversity": float},
+                    "expansion_ratio": float, "tool_result_diversity": float,
+                    "retrieved_ids": list | None},
     # optional sections (adapter-dependent):
     # "context":     {"truncated": bool, "critical_info_present": bool,
     #                 "external_instruction_weight": float},
@@ -37,6 +41,56 @@ All adapters produce this same output structure. Fields marked `# optional` are 
 ```
 
 Missing fields default to `False` (for booleans) or `0` (for numbers). Patterns that depend on missing fields won't fire — this is by design.
+
+---
+
+## Retrieval Output Specification
+
+The `retrieval` section captures document retrieval behavior.
+
+| Field | Type | Description |
+|---|---|---|
+| `skipped` | bool | Whether retrieval was skipped or no retriever step exists |
+| `retrieved_doc_count` | int | Number of documents returned by retrievers |
+| `retrieved_ids` | list[str] or null | Document/chunk IDs from retriever outputs, when available |
+| `retrieval_scores` | list[float] or null | Similarity scores from retriever outputs, when available |
+| `mean_retrieval_score` | float or null | Mean of retrieval_scores, when available |
+
+`retrieved_ids` are extracted by checking each document for keys in order: `chunk_id`, `id`, `doc_id`, `document_id`. The first match is used. If no ID keys are present, `retrieved_ids` is null.
+
+`retrieval_scores` are extracted from `score` or `similarity_score` fields in each document. If no scores are present, both fields are null.
+
+---
+
+## Grounding Output Specification
+
+The `grounding` section captures evidence quality signals for the agent's response.
+
+| Field | Type | Description |
+|---|---|---|
+| `tool_provided_data` | bool | Whether any tool returned usable (non-error) data |
+| `uncertainty_acknowledged` | bool | Whether the response contains uncertainty markers |
+| `response_length` | int | Character count of the agent's response |
+| `source_data_length` | int | Total character count of usable tool outputs |
+| `expansion_ratio` | float | `response_length / source_data_length`. Infinity if source is 0 but response exists |
+| `tool_result_diversity` | float or null | Fraction of unique tool outputs across calls. Null if fewer than 2 usable outputs |
+| `retrieved_ids` | list[str] or null | Chunk/document IDs extracted from tool outputs, when available. Null if no IDs found |
+
+### Interpretation Guide
+
+- `tool_provided_data = False` + `expansion_ratio = inf`: Agent generated response with zero source data (P0 risk)
+- `tool_provided_data = True` + high `expansion_ratio`: Response significantly exceeds source material
+- `uncertainty_acknowledged = False` + `tool_provided_data = False`: Agent did not disclose data absence
+- `retrieved_ids != null`: Enables join with upstream retrieval quality systems (e.g., chunk quality scoring)
+
+### Where `retrieved_ids` appear
+
+IDs can appear in both `retrieval` and `grounding` sections:
+
+- `retrieval.retrieved_ids` — extracted from retriever-type steps (explicit RAG retrieval)
+- `grounding.retrieved_ids` — extracted from tool-type steps that return documents or chunk_ids
+
+In many architectures, retrieval is done via tools rather than dedicated retriever steps. Both extraction paths are provided so that IDs are captured regardless of how the agent's retrieval is implemented.
 
 ---
 
@@ -64,7 +118,7 @@ Missing fields default to `False` (for booleans) or `0` (for numbers). Patterns 
       "inputs": {"query": "..."},
       "outputs": {
         "documents": [
-          {"content": "...", "score": 0.72}
+          {"content": "...", "score": 0.72, "chunk_id": "doc_001"}
         ]
       },
       "metadata": {
@@ -96,6 +150,8 @@ Missing fields default to `False` (for booleans) or `0` (for numbers). Patterns 
 | `outputs.response` | Recommended | Alignment, grounding |
 | `steps[].type` | Required | Step classification (llm/retriever/tool) |
 | `steps[].outputs` | Required | Tool data detection, grounding |
+| `steps[].outputs.documents[].chunk_id` | Optional | Chunk ID extraction for retrieval join |
+| `steps[].outputs.chunk_ids` | Optional | Alternative chunk ID extraction |
 | `steps[].error` | Optional | Error counting |
 | `feedback.user_correction` | Optional | Correction detection |
 
@@ -314,6 +370,10 @@ The telemetry sections, with their fields and how to compute them:
 | Field | Type | How to compute |
 |---|---|---|
 | `skipped` | bool | Retrieval step was skipped (e.g., due to cache hit) |
+| `retrieved_doc_count` | int | Number of documents returned by retrievers. 0 if no retriever step |
+| `retrieved_ids` | list[str] or null | Chunk/document IDs from retriever outputs. Check keys: `chunk_id`, `id`, `doc_id`, `document_id` |
+| `retrieval_scores` | list[float] or null | Similarity scores from documents. Check keys: `score`, `similarity_score` |
+| `mean_retrieval_score` | float or null | Mean of retrieval_scores |
 
 **`response`** — Output quality signals
 
@@ -350,6 +410,7 @@ The telemetry sections, with their fields and how to compute them:
 | `source_data_length` | int | Total character count of usable tool outputs |
 | `expansion_ratio` | float | `response_length / source_data_length` (0.0 if no source data and no response, inf if response but no source data) |
 | `tool_result_diversity` | float or null | Unique tool outputs / total tool calls. Null when no usable tool outputs. 1.0 for single call. Low values (< 0.5 with 2+ calls) indicate redundant tool calls — the agent may have supplemented with unsupported content |
+| `retrieved_ids` | list[str] or null | Chunk/document IDs from tool outputs (not retriever steps). Check `documents[].chunk_id` and `chunk_ids` fields |
 
 ### Step 3: Know which patterns fire from which fields
 
@@ -383,7 +444,7 @@ def _build_cache(self, normalized):
     return {"hit": False, "similarity": 0.0, "query_intent_similarity": 1.0}
 
 def _build_retrieval(self, normalized):
-    return {"skipped": False}
+    return {"skipped": False, "retrieved_doc_count": 0, "retrieved_ids": None}
 ```
 
 ### Step 5: Register and use
