@@ -6,6 +6,6 @@ Core API:
     from llm_failure_atlas.resource_loader import get_patterns_dir, get_graph_path
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 from llm_failure_atlas.resource_loader import get_patterns_dir, get_graph_path
