@@ -5,6 +5,21 @@ All notable changes to `llm-failure-atlas` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-04-28
+
+### Added
+- `retrieval.used_chunk_ids` — list of chunk IDs that overlap with the agent's response (text-overlap proxy). Approximates which retrieved chunks were actually used vs ignored.
+- `retrieval.utilisation_method` — proxy method name (currently `"text_overlap_proxy"`). Carried explicitly so consumers know the field is an approximation, not ground truth.
+- `compute_chunk_utilisation()` — shared helper in `base_adapter` for computing chunk utilisation. Used by `langchain_adapter` and `callback_handler` to maintain parity.
+- `examples/rag_chunk_diagnosis/` — PoC example demonstrating chunk-utilisation tracking and its mapping to a four-dimensional retrieval-set diagnostic (data / composition / navigation / transformation problem).
+
+### Documentation
+- `examples/rag_chunk_diagnosis/README.md` — scenario walkthrough with two contrasting cases (coverage-diversity failure where the proxy hits its limit, navigation failure where it correctly identifies unused chunks).
+- `examples/rag_chunk_diagnosis/spec_v1_1_mapping.md` — field-level mapping between the Provenance Spec v1.1 (proposed in community discussion) and Atlas/Debugger output.
+
+### Notes
+- `langsmith_adapter` does not yet emit `used_chunk_ids` / `utilisation_method`. Parity with the other two adapters is planned for a future release.
+
 ## [0.1.4] - 2026-04-21
 
 ### Added
@@ -49,4 +64,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deterministic matcher (no ML, no LLM calls for detection).
 - Cogency Framework tag mapping for all domain patterns.
 
+[0.1.5]: https://github.com/kiyoshisasano/llm-failure-atlas/releases/tag/v0.1.5
 [0.1.4]: https://github.com/kiyoshisasano/llm-failure-atlas/releases/tag/v0.1.4
