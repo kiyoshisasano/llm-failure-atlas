@@ -1,0 +1,323 @@
+{
+  "diagnosis": {
+    "root_candidates": [
+      "incorrect_output"
+    ],
+    "root_ranking": [
+      {
+        "id": "incorrect_output",
+        "score": 0.5
+      }
+    ],
+    "failures": [
+      {
+        "id": "incorrect_output",
+        "confidence": 0.6,
+        "signals": {
+          "output_misaligned_with_intent": false,
+          "user_correction_required": true,
+          "grounding_data_absent": true,
+          "grounding_gap_not_acknowledged": true
+        }
+      }
+    ],
+    "causal_links": [],
+    "causal_paths": [
+      [
+        "incorrect_output"
+      ]
+    ],
+    "primary_path": null,
+    "alternative_paths": [],
+    "conflicts": [],
+    "explanation": "No causal relationships detected.",
+    "evidence": []
+  },
+  "fix": {
+    "decision": {
+      "recommended_actions": [
+        {
+          "target_failure": "incorrect_output",
+          "priority": "medium",
+          "priority_score": 0.42,
+          "action": "Add output verification and self-critique step",
+          "detail": "Implement pre-delivery output check that validates alignment with user intent",
+          "type": "output_guard",
+          "rationale": "Active failure contributing to system degradation.",
+          "expected_effect": "Catches misaligned output before delivery to user"
+        }
+      ],
+      "action_plan": {
+        "immediate": [
+          "Add output verification and self-critique step (target: incorrect_output)"
+        ],
+        "short_term": [],
+        "long_term": []
+      },
+      "threshold_suggestions": [
+        {
+          "failure": "semantic_cache_intent_bleeding",
+          "field": "intent_threshold",
+          "current": 0.55,
+          "proposed": 0.58,
+          "reason": "repeated threshold_boundary errors in calibration",
+          "source_run_count": 6
+        }
+      ]
+    },
+    "autofix": {
+      "recommended_fixes": [
+        {
+          "target_failure": "incorrect_output",
+          "fix_type": "workflow_patch",
+          "target": "output_validator",
+          "patch": {
+            "enable_self_check": true,
+            "require_intent_alignment": true
+          },
+          "safety": "high",
+          "review_required": false,
+          "priority_score": 0.42
+        }
+      ],
+      "patch_plan": {
+        "high_safety": [
+          {
+            "target_failure": "incorrect_output",
+            "fix_type": "workflow_patch",
+            "target": "output_validator",
+            "patch": {
+              "enable_self_check": true,
+              "require_intent_alignment": true
+            },
+            "safety": "high",
+            "review_required": false,
+            "priority_score": 0.42
+          }
+        ],
+        "needs_review": []
+      },
+      "review_notes": [
+        "High-priority fixes are always preferred and fill first.",
+        "Medium-priority fixes are included only when top-k allows and high slots remain.",
+        "Suppressed competing causes are excluded.",
+        "Medium-safety patches require human confirmation."
+      ]
+    },
+    "execution_plan": {
+      "execution_plan": [
+        {
+          "order": 1,
+          "target_failure": "incorrect_output",
+          "fix_type": "workflow_patch",
+          "target": "output_validator",
+          "patch": {
+            "enable_self_check": true,
+            "require_intent_alignment": true
+          },
+          "safety": "high",
+          "review_required": false
+        }
+      ],
+      "validation": {
+        "safe": true,
+        "warnings": [],
+        "conflicts": []
+      }
+    },
+    "gate": {
+      "gate": {
+        "mode": "proposal_only",
+        "score": 0.0,
+        "reasons": [
+          "fix is safe to apply without risk",
+          "output may lack reliable grounded data"
+        ],
+        "blocked_by": [
+          "fix_type workflow_patch not in auto-apply allowed set",
+          "grounding gap not acknowledged \u2014 agent may have hallucinated without disclosure"
+        ]
+      },
+      "fix_gates": [
+        {
+          "target_failure": "incorrect_output",
+          "mode": "proposal_only",
+          "score": 0.397,
+          "reason_code": "GROUNDING_BLOCK",
+          "reasons": [
+            "fix is safe to apply without risk",
+            "output may lack reliable grounded data"
+          ],
+          "blocked_by": [
+            "fix_type workflow_patch not in auto-apply allowed set",
+            "grounding gap not acknowledged \u2014 agent may have hallucinated without disclosure"
+          ]
+        }
+      ],
+      "execution": {
+        "action": "proposal only",
+        "target_fixes": [
+          "incorrect_output"
+        ]
+      }
+    }
+  },
+  "summary": {
+    "root_cause": "incorrect_output",
+    "root_confidence": 0.5,
+    "failure_count": 1,
+    "fix_count": 1,
+    "gate_mode": "proposal_only",
+    "gate_score": 0.0,
+    "applied": false,
+    "execution_quality": {
+      "status": "degraded",
+      "termination": {
+        "mode": "normal",
+        "reasons": [
+          "state.output_produced is true",
+          "no execution error detected"
+        ]
+      },
+      "indicators": [],
+      "summary": "Execution completed with 1 failure pattern(s) detected.",
+      "utilisation": {
+        "ratio": 0.4,
+        "used_count": 2,
+        "retrieved_count": 5,
+        "method": "text_overlap_proxy"
+      }
+    }
+  },
+  "explanation": {
+    "summary": "No causal path detected.",
+    "primary_explanation": "",
+    "steps": [],
+    "alternative_explanations": [],
+    "evidence_summary": "No supporting signals.",
+    "confidence_note": "The primary path was selected because incorrect_output had the highest root ranking score (0.5).",
+    "context_summary": "Root cause identified: the system produced output misaligned with user intent, requiring correction (confidence: 0.5).",
+    "interpretation": "No causal path was identified.",
+    "risk": {
+      "level": "low",
+      "justification": "Low-confidence or minor issue. Monitor but no immediate action required."
+    },
+    "recommendation": "Low-risk issue. Fix can be applied with standard review process.",
+    "observation": {
+      "observed_signals": [
+        "acceptable_alignment_but_user_corrected",
+        "ambiguity_detected_without_clarification",
+        "ambiguity_without_clarification",
+        "assumption_persistence_after_correction",
+        "cache_hit_with_intent_mismatch",
+        "cache_query_intent_mismatch",
+        "error_without_output",
+        "execution_error_caused_termination",
+        "grounding_data_absent",
+        "grounding_gap_not_acknowledged",
+        "no_hypothesis_branching",
+        "no_replanning_before_repeat",
+        "output_misaligned_with_intent",
+        "repeated_tool_call_without_progress",
+        "retrieval_skipped_after_cache_hit",
+        "retrieved_docs_low_intent_alignment",
+        "silent_exit_without_output",
+        "symptoms_present_without_diagnosis",
+        "tools_called_but_no_output",
+        "user_correction_required"
+      ],
+      "missing_signals": [
+        "context_truncated_critical_info",
+        "contradiction_detected_but_ignored",
+        "critical_fields_missing",
+        "decision_inconsistent_with_tool_output",
+        "external_instruction_dominant",
+        "high_field_absence_rate",
+        "no_known_pattern_matched",
+        "output_patched_without_regeneration",
+        "repair_quality_below_threshold",
+        "retrieval_missing_expected_content",
+        "retrieved_context_adversarial_pattern",
+        "retrieved_context_instruction_override",
+        "system_instruction_overridden",
+        "tool_output_misaligned_with_state"
+      ],
+      "coverage": "medium"
+    }
+  },
+  "telemetry": {
+    "input": {
+      "ambiguity_score": 0.3
+    },
+    "interaction": {
+      "clarification_triggered": false,
+      "user_correction_detected": true
+    },
+    "reasoning": {
+      "replanned": false,
+      "hypothesis_count": 1
+    },
+    "cache": {
+      "hit": false,
+      "similarity": 0.0,
+      "query_intent_similarity": 1.0
+    },
+    "retrieval": {
+      "skipped": false,
+      "retrieved_doc_count": 5,
+      "retrieved_ids": [
+        "fin_q3_2025_p4_c2",
+        "fin_q2_2025_p3_c1",
+        "analyst_note_2025_10_15",
+        "customer_churn_report_q3_2025",
+        "fin_q1_2025_p2_c4"
+      ],
+      "retrieval_scores": [
+        0.91,
+        0.88,
+        0.84,
+        0.82,
+        0.79
+      ],
+      "mean_retrieval_score": 0.848,
+      "used_chunk_ids": [
+        "fin_q3_2025_p4_c2",
+        "fin_q2_2025_p3_c1"
+      ],
+      "utilisation_method": "text_overlap_proxy"
+    },
+    "response": {
+      "alignment_score": 0.58
+    },
+    "tools": {
+      "call_count": 0,
+      "repeat_count": 0,
+      "unique_tools": 0,
+      "error_count": 0,
+      "soft_error_count": 0
+    },
+    "state": {
+      "progress_made": true,
+      "tool_progress": {},
+      "any_tool_looping": false,
+      "output_produced": true,
+      "chain_error_occurred": false
+    },
+    "grounding": {
+      "tool_provided_data": false,
+      "uncertainty_acknowledged": false,
+      "response_length": 244,
+      "source_data_length": 0,
+      "expansion_ratio": null,
+      "tool_result_diversity": null,
+      "retrieved_ids": null
+    }
+  },
+  "matcher_output": [
+    {
+      "failure_id": "incorrect_output",
+      "diagnosed": true,
+      "confidence": 0.6
+    }
+  ]
+}

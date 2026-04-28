@@ -1,0 +1,64 @@
+{
+  "inputs": {
+    "query": "Why did the SaaS company's enterprise contract revenue drop in Q3 2025?"
+  },
+  "outputs": {
+    "response": "Enterprise contract revenue declined in Q3 2025, falling from $12.4M in Q2 to $9.1M in Q3, a 26.6% decrease. This drop was likely driven by broader macroeconomic headwinds and reduced enterprise IT spending across the sector during that period."
+  },
+  "steps": [
+    {
+      "type": "llm",
+      "name": "ChatOpenAI",
+      "inputs": {"prompt": "User asks why enterprise contract revenue dropped in Q3 2025."},
+      "outputs": {"text": "I'll search for information about Q3 2025 enterprise revenue."},
+      "metadata": {"model": "gpt-4"}
+    },
+    {
+      "type": "retriever",
+      "name": "vector_store",
+      "inputs": {"query": "enterprise contract revenue Q3 2025 drop reasons"},
+      "outputs": {
+        "documents": [
+          {
+            "chunk_id": "fin_q3_2025_p4_c2",
+            "content": "Enterprise contract revenue for Q3 2025 was $9.1M, compared to $12.4M in Q2 2025. Total contract value declined 26.6% quarter-over-quarter.",
+            "score": 0.91
+          },
+          {
+            "chunk_id": "fin_q2_2025_p3_c1",
+            "content": "Q2 2025 enterprise revenue reached $12.4M, the second-highest quarterly figure on record. Average contract value was $356K across 35 active enterprise accounts.",
+            "score": 0.88
+          },
+          {
+            "chunk_id": "analyst_note_2025_10_15",
+            "content": "Internal analyst memo: The Q3 enterprise revenue decline is attributable to two specific factors. First, the loss of TechCorp's $2.1M renewal contract following their acquisition by a competitor that uses an in-house solution. Second, three pilot customers (combined ARR $1.4M) chose not to convert to paid plans after extended evaluations, citing integration complexity with their existing data infrastructure.",
+            "score": 0.84
+          },
+          {
+            "chunk_id": "customer_churn_report_q3_2025",
+            "content": "Q3 2025 churn analysis: Six enterprise accounts were lost during Q3, with TechCorp ($2.1M ARR) being the largest. Exit interview data shows that 4 of 6 cited integration friction as the primary blocker. The TechCorp loss alone accounts for 64% of the QoQ enterprise revenue decline.",
+            "score": 0.82
+          },
+          {
+            "chunk_id": "fin_q1_2025_p2_c4",
+            "content": "Q1 2025 financial summary: enterprise revenue $10.7M, mid-market $5.2M, SMB $3.1M. Total revenue $19.0M with 12% YoY growth.",
+            "score": 0.79
+          }
+        ]
+      },
+      "error": null
+    },
+    {
+      "type": "llm",
+      "name": "ChatOpenAI",
+      "inputs": {"prompt": "Based on retrieved data, explain the Q3 2025 enterprise revenue drop."},
+      "outputs": {"text": "Enterprise contract revenue declined in Q3 2025, falling from $12.4M in Q2 to $9.1M in Q3, a 26.6% decrease. This drop was likely driven by broader macroeconomic headwinds and reduced enterprise IT spending across the sector during that period."},
+      "metadata": {"model": "gpt-4"}
+    }
+  ],
+  "feedback": {
+    "user_correction": "The retrieved analyst note explicitly identified TechCorp's loss and pilot non-conversions as the cause. The 'macroeconomic headwinds' claim ignores the actual evidence in the search results.",
+    "user_rating": 1
+  },
+  "latency_ms": 3400
+}

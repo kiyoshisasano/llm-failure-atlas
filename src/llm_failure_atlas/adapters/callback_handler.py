@@ -42,7 +42,7 @@ except ImportError:
     class BaseCallbackHandler:
         pass
 
-from llm_failure_atlas.adapters.base_adapter import BaseAdapter
+from llm_failure_atlas.adapters.base_adapter import BaseAdapter, compute_chunk_utilisation
 
 
 class AtlasCallbackHandler(BaseCallbackHandler):
@@ -431,6 +431,8 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 "retrieved_ids": None,
                 "retrieval_scores": None,
                 "mean_retrieval_score": None,
+                "used_chunk_ids": None,
+                "utilisation_method": None,
             }
 
         # Scan all retrieved documents for adversarial patterns
@@ -439,6 +441,7 @@ class AtlasCallbackHandler(BaseCallbackHandler):
         total_docs = 0
         retrieved_ids = []
         retrieval_scores = []
+        all_chunks = []  # for utilisation computation
 
         for ret in self._retriever_results:
             for doc in ret.get("documents", []):
@@ -452,15 +455,24 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                         break  # one match per doc is enough
 
                 # Extract chunk/document IDs
+                chunk_id = None
                 for id_key in ("chunk_id", "id", "doc_id", "document_id"):
                     if id_key in metadata:
-                        retrieved_ids.append(str(metadata[id_key]))
+                        chunk_id = str(metadata[id_key])
+                        retrieved_ids.append(chunk_id)
                         break
 
                 # Extract retrieval scores
                 score = metadata.get("score") or metadata.get("similarity_score")
                 if score is not None:
                     retrieval_scores.append(float(score))
+
+                # Build chunk shape for utilisation helper
+                if chunk_id:
+                    all_chunks.append({
+                        "chunk_id": chunk_id,
+                        "content": doc.get("content", ""),
+                    })
 
         adversarial_score = (
             adversarial_matches / total_docs if total_docs > 0 else 0.0
@@ -483,6 +495,11 @@ class AtlasCallbackHandler(BaseCallbackHandler):
             if self._retriever_results else 0.0
         )
 
+        # Compute utilisation proxy (chunk content vs final response)
+        util = compute_chunk_utilisation(
+            all_chunks, self._final_output or ""
+        )
+
         return {
             "skipped": False,
             "contains_instruction": contains_instruction,
@@ -496,6 +513,8 @@ class AtlasCallbackHandler(BaseCallbackHandler):
                 round(sum(retrieval_scores) / len(retrieval_scores), 3)
                 if retrieval_scores else None
             ),
+            "used_chunk_ids": util["used_chunk_ids"],
+            "utilisation_method": util["method"],
         }
 
     def _build_response(self) -> dict:

@@ -22,7 +22,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from llm_failure_atlas.adapters.base_adapter import BaseAdapter
+from llm_failure_atlas.adapters.base_adapter import BaseAdapter, compute_chunk_utilisation
 
 
 class LangChainAdapter(BaseAdapter):
@@ -127,11 +127,14 @@ class LangChainAdapter(BaseAdapter):
                 "retrieved_ids": None,
                 "retrieval_scores": None,
                 "mean_retrieval_score": None,
+                "used_chunk_ids": None,
+                "utilisation_method": None,
             }
 
         retrieved_doc_count = 0
         retrieved_ids = []
         retrieval_scores = []
+        all_chunks = []  # for utilisation computation
 
         for step in normalized["retriever_steps"]:
             meta = step.get("metadata", {})
@@ -139,13 +142,26 @@ class LangChainAdapter(BaseAdapter):
             retrieved_doc_count += len(docs)
             for doc in docs:
                 if isinstance(doc, dict):
+                    chunk_id = None
                     for id_key in ("chunk_id", "id", "doc_id", "document_id"):
                         if id_key in doc:
-                            retrieved_ids.append(str(doc[id_key]))
+                            chunk_id = str(doc[id_key])
+                            retrieved_ids.append(chunk_id)
                             break
                     score = doc.get("score") or doc.get("similarity_score")
                     if score is not None:
                         retrieval_scores.append(float(score))
+                    if chunk_id:
+                        # Build chunk shape for utilisation helper
+                        all_chunks.append({
+                            "chunk_id": chunk_id,
+                            "content": (doc.get("content") or doc.get("page_content")
+                                        or doc.get("text") or ""),
+                        })
+
+            # Compute utilisation proxy from retrieved chunks vs final response
+            response = normalized.get("response", "") or ""
+            util = compute_chunk_utilisation(all_chunks, response)
 
             return {
                 "skipped": bool(meta.get("retrieval_skipped", False)),
@@ -156,6 +172,8 @@ class LangChainAdapter(BaseAdapter):
                     round(sum(retrieval_scores) / len(retrieval_scores), 3)
                     if retrieval_scores else None
                 ),
+                "used_chunk_ids": util["used_chunk_ids"],
+                "utilisation_method": util["method"],
             }
 
         return {
@@ -164,6 +182,8 @@ class LangChainAdapter(BaseAdapter):
             "retrieved_ids": None,
             "retrieval_scores": None,
             "mean_retrieval_score": None,
+            "used_chunk_ids": None,
+            "utilisation_method": None,
         }
 
     # Markers for tool outputs that indicate a soft failure (no usable data).
