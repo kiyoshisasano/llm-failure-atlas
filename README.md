@@ -380,6 +380,8 @@ Atlas focuses on single-agent runtime failures:
 
 The same patterns also apply to non-LLM systems with similar step/retry/termination structures. See [examples/workflow_pipeline](examples/workflow_pipeline/) (order processing pipeline) and [examples/api_orchestration](examples/api_orchestration/) (multi-API service) for demonstrations with no LLM involved.
 
+For RAG-specific examples, see [examples/rag_chunk_diagnosis](examples/rag_chunk_diagnosis/) — chunk-level utilisation tracking with the four-dimensional retrieval-set diagnostic (data / composition / navigation / transformation problem) and its proxy limitations.
+
 It does not currently cover:
 
 - Multi-agent coordination failures (see [MAST](https://github.com/multi-agent-systems-failure-taxonomy/MAST))
@@ -434,7 +436,7 @@ llm-failure-atlas/
       update_policy.py                  # suggestion-only learning
   evaluation/                            # mutation + sensitivity tests
   validation/                            # 30 scenarios + annotations
-  examples/                              # 12 test cases (10 agent + 2 non-LLM)
+  examples/                              # 13 test cases (10 agent + 2 non-LLM + 1 RAG)
   docs/                                  # analysis + playbook
 ```
 
