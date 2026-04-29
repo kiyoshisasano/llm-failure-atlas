@@ -1,8 +1,9 @@
 # Provenance Spec v1.1 ↔ Atlas/Debugger Output Mapping
 
 This document maps each field in the **Provenance Spec v1.1** (proposed in
-the forum thread) to its current implementation status on the
-behavioral-side toolchain (Atlas v0.1.5 + Debugger v0.4.0).
+the forum thread; v1.2 in progress at time of writing) to its current
+implementation status on the behavioral-side toolchain (Atlas v0.1.5 +
+Debugger v0.4.0).
 
 The spec separates concerns between the two sides:
 
@@ -54,15 +55,15 @@ blocks via `chunk_id` / `chunk_set_hash` in a shared analysis layer.
 
 | Spec v1.1 field | Atlas/Debugger output | Status |
 |---|---|---|
-| `step_id` | — | ❌ Adapter does not currently emit per-step identifiers. The matcher operates on aggregated telemetry rather than step-keyed data. |
-| `ancestor_retrieval_set_ids` | — | ❌ Lineage tracking across steps is not currently implemented. This is the substantive gap noted in the 4/24 reply. |
-| `transformation_type` | — | ❌ Not captured. |
+| `step_id` | — | ⚠️ Retrieval-side responsibility (decision: 2026-04-28). Behavioral side consumes this passively if present in the trace, but does not generate it. |
+| `ancestor_retrieval_set_ids` | — | ⚠️ Same as above — retrieval-side responsibility. |
+| `transformation_type` | — | ⚠️ Same as above. |
 
-This block is the area where the behavioral side has the **most room to
-grow**. Run-level aggregation was a deliberate choice for Atlas v0.1.x
-(matcher operates on aggregated telemetry, not step-keyed data).
-Step-level lineage would require a structural change rather than just
-a new field.
+This block is **retrieval-side responsibility** (decided in spec dialogue,
+2026-04-28). The behavioral side does not infer step-level lineage because
+doing so would compound paraphrase-related proxy errors at every step
+boundary; recorded facts on the retrieval side do not have this
+degradation.
 
 ### UTILISATION (added in spec discussion 4/26)
 
@@ -107,10 +108,8 @@ Minimum viable join, in increasing implementation cost:
 2. **Surface retriever-step metadata.** When the retriever passes
    `pre_ingestion_quality` blocks via document metadata, the adapter
    should forward them to the telemetry rather than discarding.
-3. **Step-level retrieval tracking.** This is the harder change —
-   restructuring telemetry from run-aggregated to step-keyed. It
-   enables `ancestor_retrieval_set_ids` and full transformation-anchor
-   support.
+3. **Step-level retrieval tracking.** Resolved as retrieval-side
+   responsibility (2026-04-28). The behavioral side passively consumes
+   `step_id` when present in the trace.
 
-Items 1 and 2 are tractable for a v0.1.6 / v0.4.1 release. Item 3 is a
-larger architectural change and would need its own design discussion.
+Items 1 and 2 are tractable for a v0.1.6 / v0.4.1 release.
